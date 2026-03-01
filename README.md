@@ -2,6 +2,11 @@
 ---
 
 ## 🎯 Project Objective
+![ECE Paris](https://img.shields.io/badge/ECE%20Paris-Cyber%20Physical%20Systems-003366)
+![Smart Grid Security](https://img.shields.io/badge/Smart%20Grid-Security-red)
+![pandapower](https://img.shields.io/badge/Simulation-pandapower-success)
+![Monte Carlo](https://img.shields.io/badge/Analysis-Time%20Series-blueviolet)
+![License MIT](https://img.shields.io/badge/License-MIT-yellow)
 
 Model, simulate, and evaluate the impact of coordinated cyberattacks on distributed solar PV inverters in the French electricity network by:
 
