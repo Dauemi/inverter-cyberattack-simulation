@@ -1,182 +1,224 @@
+Cyber-Physical Simulation of Coordinated Attacks on Distributed Solar PV Inverters
+Abstract
 
----
+The rapid integration of distributed photovoltaic (PV) systems into modern power grids introduces new cyber-physical vulnerabilities. This project presents a simulation framework for modeling coordinated cyberattacks on distributed solar inverters within a synthetic French distribution network.
 
-## 🎯 Project Objective
+Using time-series power flow analysis in pandapower, the framework evaluates voltage stability, line loading, and frequency deviations under multiple attack scenarios (S1–S5). A quantitative cyber-physical risk assessment is performed, and a three-layer Intrusion Detection System (IDS) architecture is proposed to mitigate coordinated inverter manipulation.
 
-Model, simulate, and evaluate the impact of coordinated cyberattacks on distributed solar PV inverters in the French electricity network by:
+Results indicate that while distribution-level voltage impacts remain limited, large-scale coordinated PV shutdown (≥5 GW) can produce moderate frequency deviations at the system level, highlighting the importance of wide-area monitoring and detection.
 
-1. Creating a realistic distribution grid using **pandapower** and FR synthetic datasets.  
-2. Simulating solar inverter shutdown attacks in scenarios S1–S5.  
-3. Running **time-series load & PV curves** (15-minute resolution).  
-4. Evaluating the impact on:
-   - Bus voltages  
-   - Line loadings  
-   - System frequency  
-5. Quantifying cyber-physical risk (impact × likelihood).  
-6. Designing a 3-layer IDS architecture for detecting coordinated PV manipulation attacks.
+1. Introduction
 
----
+Distributed Energy Resources (DER), particularly grid-connected PV inverters, are increasingly digitized and remotely controllable. While this enhances operational flexibility, it also expands the cyber attack surface of power systems.
 
-# 🗂️ Dataset Overview (France Synthetic Sprint 3)
+This project investigates:
 
-The simulation uses realistic **synthetic** (NOT confidential) French distribution data:
+Coordinated inverter shutdown attacks
 
-| Dataset | Description |
-|--------|-------------|
-| `fr_grid_buses.csv` | 33-bus distribution topology |
-| `fr_grid_lines.csv` | 37 lines with impedances |
-| `fr_grid_loads.csv` | 32 loads |
-| `fr_grid_pv_generators.csv` | 7 aggregated PV generators |
-| `fr_inverter_parameters.csv` | PV inverter characteristics |
-| `fr_load_profile_15min.csv` | 15-min French load curve |
-| `fr_attack_scenarios_S1_S5.csv` | Defined cyberattack levels |
+Cascading cyber-physical effects
 
-This dataset is fully **public and research-safe**.
+Distribution-level electrical impacts
 
----
+System-level frequency deviations
 
-# 📡 Cyberattack Scenarios (S1–S5)
+Risk quantification
 
-| Scenario | Description | PV Affected |
-|----------|-------------|-------------|
-| **S1** | Local disturbance | 0.1 GW |
-| **S2** | Feeder-level coordinated attack | 0.4 GW |
-| **S3** | Multi-region attack | 1.0 GW |
-| **S4** | Regional synchronized shutdown | 2.0 GW |
-| **S5** | National-scale coordinated shutdown | 5.0 GW |
+IDS-based mitigation strategies
 
-PV is shut down **100%** in affected regions, triggered at **12:00**.
+2. System Model
+2.1 Distribution Network
 
----
+The simulated network is based on synthetic French distribution data:
 
-# ⚡ Simulation Workflow
+33 buses
 
-## ✔ 1. Grid Initialization (pandapower)
-Loads:
-- Bus data
-- Lines (R, X)
-- Loads (MW)
-- PV generators (MW)
-- Slack grid
+37 lines
 
-## ✔ 2. Load & PV Time-Series
-- 15-minute load profile  
-- Synthetic PV profile: sunrise → sunset  
-- Combined into time-series power-flow loop
+32 loads
 
-## ✔ 3. Attack Injection
-At t = 12:00:
-- Affected PV capacity is reduced based on S1–S5
-- Scenarios automatically modify total PV output
+7 aggregated PV generators
 
-## ✔ 4. Power-Flow Evaluation
-For each timestep:
-- `pp.runpp()`
-- Record:
-  - min/max voltage
-  - line loading
-  - total load, total PV
+15-minute time resolution
 
----
+All data are synthetic and research-safe.
 
-# 📊 Key Results
+2.2 Power Flow Simulation
 
-## 🔹 Voltage Stability
-Across all scenarios S1–S5:
+Time-series AC power flow is executed using pandapower.
 
-- Worst ΔV observed: **–0.003 p.u.**  
-- Voltage remained within **EN50160 standards (±10%)**
+At each timestep:
 
-Even S5 caused negligible voltage instability.
+Load and PV generation are updated
 
----
+Attack conditions are applied (if active)
 
-## 🔹 Line Loading
-Line loading differences were extremely small:
+AC power flow is solved
 
-- Max line loading: **~74%** (no overloads)
-- Δ loading between base and attack: **0.0%** in all cases
+Electrical metrics are recorded
 
-No thermal limits were exceeded.
+Key monitored variables:
 
----
+Bus voltage magnitude (p.u.)
 
-## 🔹 Frequency Impact (Simplified Model)
+Line loading (%)
 
-Using:
-- System size: 100 GW  
-- Sensitivity: 10% loss → 0.5 Hz drop  
+Total PV generation (MW)
 
-| Scenario | ΔP (GW) | Δf (Hz) | Severity |
-|---------|----------|----------|-----------|
-| S1 | 0.1 | –0.005 | Low |
-| S2 | 0.4 | –0.020 | Low |
-| S3 | 1.0 | –0.050 | Low |
-| S4 | 2.0 | –0.100 | Low |
-| **S5** | 5.0 | –0.250 | Moderate |
+Total load (MW)
 
-Only S5 reaches **moderate** system impact.
+3. Cyberattack Model
 
----
+Five escalating attack scenarios are modeled:
 
-# 📉 Risk Matrix (Impact × Likelihood)
+Scenario	Description	PV Loss
+S1	Local disturbance	0.1 GW
+S2	Feeder-level coordinated attack	0.4 GW
+S3	Multi-region attack	1.0 GW
+S4	Regional synchronized shutdown	2.0 GW
+S5	National-scale coordinated shutdown	5.0 GW
 
-| Scenario | Impact | Likelihood | Risk Score | Risk Level |
-|----------|---------|------------|------------|-------------|
-| **S1** | 1 | 3 | 3 | Low |
-| **S2** | 2 | 3 | 6 | Low–Medium |
-| **S3** | 2 | 4 | 8 | Medium |
-| **S4** | 3 | 4 | 12 | High |
-| **S5** | 4 | 2 | 8 | Medium |
+Attack characteristics:
 
-Highest-risk scenario: **S4 (High)**  
-Most damaging scenario: **S5 (Moderate, but large ΔP)**
+Instantaneous PV disconnection
 
----
+Trigger time: 12:00
 
-# 🔐 IDS Architecture (Three-Layer Model)
+Full inverter shutdown in targeted regions
 
-## 🟦 1. Local Inverter IDS
-Monitors:
-- Sudden PV drop  
-- Frequent setpoint changes  
-- Invalid SunSpec/Modbus commands  
-- Heartbeat loss  
+4. Simulation Results
+4.1 Voltage Stability
 
-Triggers:
-- ΔP > 10% in 1 min  
-- >10 identical commands in 5 sec  
+Maximum observed deviation: −0.003 p.u.
 
----
+All voltages remained within EN50160 limits (±10%)
 
-## 🟧 2. Feeder/Substation IDS  
-Detects:
-- Coordinated feeder-wide shutdown  
-- Voltage sag across multiple buses  
-- Identical communication patterns from many inverters  
+No voltage collapse observed
 
-Triggers:
-- Feeder PV loss > 30% in 5 min  
-- >3 buses drop > 0.02 p.u.  
+Distribution networks showed strong robustness to PV loss at simulated penetration levels.
 
----
+4.2 Line Loading
 
-## 🟥 3. Control Center IDS (Wide-Area)
-Detects:
-- Multi-region S3/S4 attacks  
-- National-level S5 shutdown  
-- SCADA anomalies  
-- Δf > 0.1 Hz  
+Maximum loading: ~74%
 
-Triggers:
-- ΔP > 1 GW → High  
-- ΔP > 5 GW → Critical  
+No thermal overload violations
 
----
+Minimal deviation from baseline conditions
 
-# 🛠️ How to Run the Simulation
+4.3 Frequency Impact (System-Level Approximation)
+
+Assumptions:
+
+100 GW national system size
+
+10% generation loss → 0.5 Hz drop
+
+Scenario	ΔP (GW)	Δf (Hz)
+S1	0.1	−0.005
+S2	0.4	−0.020
+S3	1.0	−0.050
+S4	2.0	−0.100
+S5	5.0	−0.250
+
+Only S5 produces moderate frequency deviation.
+
+5. Risk Assessment
+
+Cyber-physical risk is computed as:
+
+Risk = Impact × Likelihood
+
+Scenario	Impact	Likelihood	Risk Score	Level
+S1	1	3	3	Low
+S2	2	3	6	Low–Medium
+S3	2	4	8	Medium
+S4	3	4	12	High
+S5	4	2	8	Medium
+
+Highest risk scenario: S4
+Most damaging scenario: S5
+
+6. Intrusion Detection Architecture
+
+A hierarchical three-layer IDS is proposed:
+
+Layer 1 — Local Inverter IDS
+
+Detects abrupt power drops
+
+Monitors repeated command injections
+
+Detects communication anomalies
+
+Layer 2 — Feeder/Substation IDS
+
+Identifies coordinated PV loss
+
+Detects correlated voltage sag
+
+Monitors synchronized inverter behavior
+
+Layer 3 — Control Center IDS
+
+Detects multi-region attacks
+
+Monitors frequency deviation
+
+Aggregates SCADA anomalies
+
+7. Implementation
+7.1 Requirements
+
+Python 3.9+
+
+pandapower
+
+numpy
+
+pandas
+
+matplotlib
 
 Install dependencies:
 
-```bash
 pip install -r requirements.txt
+7.2 Execution
+
+Run the main simulation:
+
+python src/main.py
+
+Outputs include:
+
+Voltage time series
+
+Line loading analysis
+
+Monte Carlo risk metrics
+
+Attack scenario comparisons
+
+8. Research Contributions
+
+This project demonstrates:
+
+A reproducible cyber-physical simulation framework
+
+Quantified inverter attack impact
+
+Distribution-level robustness assessment
+
+System-level frequency sensitivity estimation
+
+A layered IDS detection concept
+
+9. Future Work
+
+Dynamic frequency modeling (swing equation)
+
+Protection system interaction modeling
+
+Cascading failure analysis
+
+Realistic communication-layer attack modeling
+
+Integration with hardware-in-the-loop testing
