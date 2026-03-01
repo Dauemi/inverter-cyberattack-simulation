@@ -1,15 +1,15 @@
 Cyber-Physical Simulation of Coordinated Attacks on Distributed Solar PV Inverters
 Abstract
 
-The rapid integration of distributed photovoltaic (PV) systems into modern power grids introduces new cyber-physical vulnerabilities. This project presents a simulation framework for modeling coordinated cyberattacks on distributed solar inverters within a synthetic French distribution network.
+The rapid integration of distributed photovoltaic (PV) systems into modern power grids introduces new cyber-physical vulnerabilities. This project presents a simulation framework for modeling coordinated cyberattacks targeting distributed solar inverters within a synthetic French distribution network.
 
-Using time-series power flow analysis in pandapower, the framework evaluates voltage stability, line loading, and frequency deviations under multiple attack scenarios (S1–S5). A quantitative cyber-physical risk assessment is performed, and a three-layer Intrusion Detection System (IDS) architecture is proposed to mitigate coordinated inverter manipulation.
+Using time-series AC power-flow analysis implemented in pandapower, the framework evaluates voltage stability, line loading, and system-level frequency deviations under multiple attack scenarios (S1–S5). A quantitative cyber-physical risk assessment is conducted, and a hierarchical three-layer Intrusion Detection System (IDS) architecture is proposed to mitigate coordinated inverter manipulation.
 
-Results indicate that while distribution-level voltage impacts remain limited, large-scale coordinated PV shutdown (≥5 GW) can produce moderate frequency deviations at the system level, highlighting the importance of wide-area monitoring and detection.
+Results indicate that while distribution-level voltage impacts remain limited, large-scale coordinated PV shutdowns (≥5 GW) can produce moderate frequency deviations at the transmission-system level, highlighting the importance of wide-area monitoring and coordinated detection mechanisms.
 
 1. Introduction
 
-Distributed Energy Resources (DER), particularly grid-connected PV inverters, are increasingly digitized and remotely controllable. While this enhances operational flexibility, it also expands the cyber attack surface of power systems.
+Distributed Energy Resources (DERs), particularly grid-connected PV inverters, are increasingly digitized and remotely controllable. While this enhances operational flexibility, it significantly expands the cyber attack surface of power systems.
 
 This project investigates:
 
@@ -21,14 +21,14 @@ Distribution-level electrical impacts
 
 System-level frequency deviations
 
-Risk quantification
+Quantitative risk assessment
 
 IDS-based mitigation strategies
 
 2. System Model
 2.1 Distribution Network
 
-The simulated network is based on synthetic French distribution data:
+The simulated network is based on synthetic French distribution data and includes:
 
 33 buses
 
@@ -42,7 +42,7 @@ The simulated network is based on synthetic French distribution data:
 
 All data are synthetic and research-safe.
 
-2.2 Power Flow Simulation
+2.2 Power-Flow Simulation
 
 Time-series AC power flow is executed using pandapower.
 
@@ -56,7 +56,7 @@ AC power flow is solved
 
 Electrical metrics are recorded
 
-Key monitored variables:
+Monitored variables include:
 
 Bus voltage magnitude (p.u.)
 
@@ -135,6 +135,7 @@ S4	3	4	12	High
 S5	4	2	8	Medium
 
 Highest risk scenario: S4
+
 Most damaging scenario: S5
 
 6. Intrusion Detection Architecture
@@ -147,9 +148,9 @@ Detects abrupt power drops
 
 Monitors repeated command injections
 
-Detects communication anomalies
+Identifies communication anomalies
 
-Layer 2 — Feeder/Substation IDS
+Layer 2 — Feeder / Substation IDS
 
 Identifies coordinated PV loss
 
@@ -161,7 +162,7 @@ Layer 3 — Control Center IDS
 
 Detects multi-region attacks
 
-Monitors frequency deviation
+Monitors system-wide frequency deviation
 
 Aggregates SCADA anomalies
 
@@ -199,26 +200,26 @@ Attack scenario comparisons
 
 8. Research Contributions
 
-This project demonstrates:
+This project provides:
 
 A reproducible cyber-physical simulation framework
 
-Quantified inverter attack impact
+Quantified inverter attack impact assessment
 
-Distribution-level robustness assessment
+Distribution-level robustness evaluation
 
 System-level frequency sensitivity estimation
 
-A layered IDS detection concept
+A structured IDS detection concept
 
 9. Future Work
 
-Dynamic frequency modeling (swing equation)
+Dynamic frequency modeling (swing equation implementation)
 
 Protection system interaction modeling
 
 Cascading failure analysis
 
-Realistic communication-layer attack modeling
+Communication-layer attack realism
 
-Integration with hardware-in-the-loop testing
+Hardware-in-the-loop validation
