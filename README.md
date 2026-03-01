@@ -2,8 +2,10 @@
 ---
 
 ## 🎯 Project Objective
+## 🎯 Project Objective
+
 ![ECE Paris](https://img.shields.io/badge/ECE%20Paris-Cyber%20Physical%20Systems-003366)
-![Smart Grid](https://img.shields.io/badge/Domain-Smart%20Grid-Security-red)
+![Smart Grid](https://img.shields.io/badge/Domain-Smart%20Grid%20Security-red)
 ![pandapower](https://img.shields.io/badge/Simulation-pandapower-success)
 ![Analysis](https://img.shields.io/badge/Analysis-Time%20Series-blueviolet)
 
