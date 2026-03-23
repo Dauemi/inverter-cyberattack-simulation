@@ -258,8 +258,8 @@ table.info-table tr:hover { background: #1a254522; }
 </div>
 
 <div class="footer">
-  2ASICYA &mdash; Actions Against Solar Inverter Cyber Attack &bull; ECE Paris 2025-2026 &bull; Donn&eacute;es synth&eacute;tiques
-  <br>Dataset recommand&eacute; : <a href="https://www.kaggle.com/datasets/anikannal/solar-power-generation-data" target="_blank" style="color:#00d4ff">Solar Power Generation Data (Kaggle)</a>
+  2ASICYA &mdash; Actions Against Solar Inverter Cyber Attack &bull; ECE Paris 2025-2026 &bull; Synthetic data
+  <br>Recommended dataset: <a href="https://www.kaggle.com/datasets/anikannal/solar-power-generation-data" target="_blank" style="color:#00d4ff">Solar Power Generation Data (Kaggle)</a>
 </div>
 
 <script>
@@ -601,6 +601,8 @@ function toggleSimulation() {
 
 // ===== INIT =====
 renderAll();
+// Auto-refresh with latest combined data (if available)
+loadDashboardData(true);
 </script>
 </body>
 </html>
