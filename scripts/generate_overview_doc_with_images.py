@@ -10,6 +10,10 @@ ASSETS = [
     ("Risk Matrix", r"C:\Users\gemim\.cursor\projects\c-Users-gemim-OneDrive-Bureau-M1-cours-Data-engineer-MSC-1-AI-Semestre-2-Pratice-Based-Project-Inverter-cyberattack-simulation\assets\c__Users_gemim_AppData_Roaming_Cursor_User_workspaceStorage_ac14ed6699ff7621edd7a3bbbb5e0d41_images_image-b37122fc-b79a-4f5b-a895-21063ce71372.png"),
 ]
 
+HEADER_LINE_1 = "ECE Paris – MSc Cyber-Physical Systems"
+HEADER_LINE_2 = "2ASICYA Project Overview"
+FOOTER_TEXT = "2ASICYA · 2025–2026"
+
 
 def add_title(doc: Document, text: str) -> None:
     p = doc.add_paragraph()
@@ -62,8 +66,32 @@ def add_list_of_figures(doc: Document) -> None:
     doc.add_paragraph(" ")
 
 
+def _add_field(run, instr: str) -> None:
+    fld_simple = OxmlElement("w:fldSimple")
+    fld_simple.set(qn("w:instr"), instr)
+    run._r.append(fld_simple)
+
+
+def add_header_footer(doc: Document) -> None:
+    section = doc.sections[0]
+    header = section.header
+    footer = section.footer
+
+    header_p = header.paragraphs[0]
+    header_p.text = f"{HEADER_LINE_1}\n{HEADER_LINE_2}"
+
+    footer_p = footer.paragraphs[0]
+    footer_p.text = f"{FOOTER_TEXT} — Page "
+    r1 = footer_p.add_run()
+    _add_field(r1, "PAGE")
+    footer_p.add_run(" of ")
+    r2 = footer_p.add_run()
+    _add_field(r2, "NUMPAGES")
+
+
 def build_full_doc(out_path: str) -> None:
     doc = Document()
+    add_header_footer(doc)
     add_title(doc, "2ASICYA Project Overview")
     doc.add_paragraph("Solar Inverter Cyber Attack Simulation & Dashboard")
     doc.add_paragraph(" ")
@@ -205,6 +233,7 @@ def build_full_doc(out_path: str) -> None:
 
 def build_short_doc(out_path: str) -> None:
     doc = Document()
+    add_header_footer(doc)
     add_title(doc, "2ASICYA — Short Project Summary")
     doc.add_paragraph("1–2 page overview for presentation.")
     doc.add_paragraph(" ")
