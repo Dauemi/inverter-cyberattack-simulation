@@ -102,6 +102,16 @@ Refer to the **dashboard charts** for the latest max loading and overload indica
 Frequency impact is **derived from a simplified sensitivity model**.  
 Exact values are shown in the dashboard after data refresh.
 
+**Current run (synthetic dataset):**
+
+| Scenario | ΔP (GW) | Δf (Hz) | Severity |
+|---------|----------|---------|----------|
+| S1 | 0.1 | –0.005 | Low |
+| S2 | 0.4 | –0.020 | Low |
+| S3 | 1.0 | –0.050 | Low |
+| S4 | 2.0 | –0.100 | Low |
+| S5 | 5.0 | –0.250 | Moderate |
+
 ---
 
 # 📉 Risk Matrix (Impact × Likelihood)
@@ -112,6 +122,16 @@ The exact table updates after running:
 python scripts/compute_risk_scores.py
 python dashboard/build_dashboard_data.py --html 2ASICYA_Dashboard.html --out dashboard/data/combined_dashboard.json --france-dir data/france_sprint3 --kaggle-dir dashboard/data --inject
 ```
+
+**Current run (synthetic dataset):**
+
+| Scenario | Impact | Likelihood | Risk Score | Risk Level |
+|----------|--------|------------|------------|------------|
+| S1 | 1 | 1 | 1 | Low |
+| S2 | 1 | 2 | 2 | Low |
+| S3 | 1 | 3 | 3 | Low |
+| S4 | 1 | 4 | 4 | Low–Medium |
+| S5 | 1 | 5 | 5 | Low–Medium |
 
 ---
 
