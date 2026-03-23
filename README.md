@@ -84,58 +84,34 @@ For each timestep:
 
 ---
 
-# 📊 Key Results
+# 📊 Key Results (Dashboard‑Driven)
 
 ## 🔹 Voltage Stability
-Across all scenarios S1–S5:
-
-- Worst ΔV observed: **–0.003 p.u.**  
-- Voltage remained within **EN50160 standards (±10%)**
-
-Even S5 caused negligible voltage instability.
+The exact values depend on the **combined dashboard dataset** (France Sprint3 + Kaggle).
+Open the dashboard and use **RUN + RELOAD** to view updated voltage statistics.
 
 ---
 
 ## 🔹 Line Loading
-Line loading differences were extremely small:
-
-- Max line loading: **~74%** (no overloads)
-- Δ loading between base and attack: **0.0%** in all cases
-
-No thermal limits were exceeded.
+Line loading metrics are computed from the current dataset.  
+Refer to the **dashboard charts** for the latest max loading and overload indicators.
 
 ---
 
 ## 🔹 Frequency Impact (Simplified Model)
-
-Using:
-- System size: 100 GW  
-- Sensitivity: 10% loss → 0.5 Hz drop  
-
-| Scenario | ΔP (GW) | Δf (Hz) | Severity |
-|---------|----------|----------|-----------|
-| S1 | 0.1 | –0.005 | Low |
-| S2 | 0.4 | –0.020 | Low |
-| S3 | 1.0 | –0.050 | Low |
-| S4 | 2.0 | –0.100 | Low |
-| **S5** | 5.0 | –0.250 | Moderate |
-
-Only S5 reaches **moderate** system impact.
+Frequency impact is **derived from a simplified sensitivity model**.  
+Exact values are shown in the dashboard after data refresh.
 
 ---
 
 # 📉 Risk Matrix (Impact × Likelihood)
-
-| Scenario | Impact | Likelihood | Risk Score | Risk Level |
-|----------|---------|------------|------------|-------------|
-| **S1** | 1 | 3 | 3 | Low |
-| **S2** | 2 | 3 | 6 | Low–Medium |
-| **S3** | 2 | 4 | 8 | Medium |
-| **S4** | 3 | 4 | 12 | High |
-| **S5** | 4 | 2 | 8 | Medium |
-
-Highest-risk scenario: **S4 (High)**  
-Most damaging scenario: **S5 (Moderate, but large ΔP)**
+Risk scores are **computed from voltage, frequency, and line‑loading metrics**  
+and displayed in the **dashboard Risk Matrix tab**.  
+The exact table updates after running:
+```
+python scripts/compute_risk_scores.py
+python dashboard/build_dashboard_data.py --html 2ASICYA_Dashboard.html --out dashboard/data/combined_dashboard.json --france-dir data/france_sprint3 --kaggle-dir dashboard/data --inject
+```
 
 ---
 
@@ -185,7 +161,7 @@ Install dependencies:
 
 ```bash
 pip install -r requirements.txt
-python src/main.py
+python -m src.main
 ```
 
 ## ✅ Test Checklist (Quick)
