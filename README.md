@@ -185,3 +185,38 @@ Install dependencies:
 
 ```bash
 pip install -r requirements.txt
+python src/main.py
+```
+
+---
+
+# ⚠️ Limitations (Résumé)
+
+- Modèle de fréquence linéaire simplifié (pas d’inertie ni FCR).
+- Échelle locale (33-bus, 3 MW PV) extrapolée à des scénarios GW.
+- IDS présenté comme architecture conceptuelle (pas d’implémentation temps réel).
+
+---
+
+# 🧭 Méthodologie (Résumé)
+
+- Pandapower: power-flow et profils temporels (33-bus France synthétique).
+- Modèle fréquence: estimation d’impact agrégé (hypothèse P_sys=100 GW).
+
+---
+
+# 📥 Datasets Kaggle (Dashboard)
+
+- Solar Power Generation Data: https://www.kaggle.com/datasets/anikannal/solar-power-generation-data
+- Smart Grid Intrusion Detection: https://www.kaggle.com/datasets/hussainsheikh03/smart-grid-intrusion-detection-dataset
+
+---
+
+# 👥 Team Contributions
+
+- Roy: code simulation, scénarios d’attaque, résultats.
+- Gilles: dashboard, intégration données, visualisations.
+- Eseoghene: coordination documents et synthèses.
+- Rasaq: sécurité/IDS, matrice de risques.
+- Yves: datasets externes, enrichissement dashboard.
+- Gémima: relecture, cohérence, finalisation.
