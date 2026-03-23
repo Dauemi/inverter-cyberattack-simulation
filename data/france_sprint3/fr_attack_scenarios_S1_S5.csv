@@ -1,0 +1,6 @@
+scenario,description,affected_power_gw,compromised_pct,change_pct_of_affected,ramp_seconds
+S1,Local disturbance,0.1,0.1,-100,60
+S2,Feeder-level coordinated attack,0.4,0.4,-100,60
+S3,Multi-region attack,1.0,1.0,-100,60
+S4,Regional synchronized shutdown,2.0,2.0,-100,60
+S5,National-scale coordinated shutdown,5.0,5.0,-100,60

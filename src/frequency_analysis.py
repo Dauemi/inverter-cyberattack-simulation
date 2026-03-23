@@ -14,6 +14,8 @@ def estimate_delta_f(fraction_lost: float) -> float:
     - If 10% of total generation is lost -> 0.5 Hz drop
     - Scale linearly with fraction_lost
     Δf = -SENS_10pct * (fraction_lost / 0.10)
+    NOTE: This is a toy model that ignores inertia, primary control (FCR),
+    and system dynamics. It is used for illustrative impact ranking only.
     """
     return -SENS_10pct * (fraction_lost / 0.10)
 
