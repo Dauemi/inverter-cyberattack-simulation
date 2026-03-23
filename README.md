@@ -188,35 +188,66 @@ pip install -r requirements.txt
 python src/main.py
 ```
 
+## ✅ Test Checklist (Quick)
+
+1) Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2) Ensure all France Sprint 3 CSVs exist in `data/france_sprint3/`:
+- `fr_grid_buses.csv`
+- `fr_grid_lines.csv`
+- `fr_grid_loads.csv`
+- `fr_grid_pv_generators.csv`
+- `fr_inverter_parameters.csv`
+- `fr_load_profile_15min.csv`
+- `fr_attack_scenarios_S1_S5.csv`
+
+3) Run the main simulation:
+```bash
+python src/main.py
+```
+
+If any CSV is missing, the simulation will fail.
+
 ---
 
-# ⚠️ Limitations (Résumé)
+# ⚠️ Limitations (Summary)
 
-- Modèle de fréquence linéaire simplifié (pas d’inertie ni FCR).
-- Échelle locale (33-bus, 3 MW PV) extrapolée à des scénarios GW.
-- IDS présenté comme architecture conceptuelle (pas d’implémentation temps réel).
-
----
-
-# 🧭 Méthodologie (Résumé)
-
-- Pandapower: power-flow et profils temporels (33-bus France synthétique).
-- Modèle fréquence: estimation d’impact agrégé (hypothèse P_sys=100 GW).
+- Simplified linear frequency model (no inertia or FCR).
+- Local-scale feeder (33-bus, 3 MW PV) extrapolated to GW scenarios.
+- IDS is conceptual (no real-time implementation).
 
 ---
 
-# 📥 Datasets Kaggle (Dashboard)
+# 🧭 Methodology (Summary)
+
+- Pandapower: power-flow and time-series profiles (33-bus synthetic France).
+- Frequency model: aggregated impact estimate (assumption P_sys=100 GW).
+
+---
+
+# 📥 Kaggle Datasets (Dashboard)
 
 - Solar Power Generation Data: https://www.kaggle.com/datasets/anikannal/solar-power-generation-data
 - Smart Grid Intrusion Detection: https://www.kaggle.com/datasets/hussainsheikh03/smart-grid-intrusion-detection-dataset
 
 ---
 
+# 🗂️ Project Structure
+
+- `src/`: simulation, analysis, risk, and plotting modules.
+- `data/france_sprint3/`: synthetic France datasets (CSV + metadata).
+- `dashboard/`: dashboard guide and data placeholders.
+
+---
+
 # 👥 Team Contributions
 
-- Roy: code simulation, scénarios d’attaque, résultats.
-- Gilles: dashboard, intégration données, visualisations.
-- Eseoghene: coordination documents et synthèses.
-- Rasaq: sécurité/IDS, matrice de risques.
-- Yves: datasets externes, enrichissement dashboard.
-- Gémima: relecture, cohérence, finalisation.
+- Roy: simulation code, attack scenarios, results.
+- Gilles: dashboard, data integration, visualizations.
+- Eseoghene: document coordination and synthesis.
+- Rasaq: security/IDS, risk matrix.
+- Yves: external datasets, dashboard enrichment.
+- Gémima: proofreading, consistency, finalization.
