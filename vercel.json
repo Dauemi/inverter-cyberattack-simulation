@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "public": true,
+  "routes": [
+    { "src": "/", "dest": "/2ASICYA_Dashboard.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}
