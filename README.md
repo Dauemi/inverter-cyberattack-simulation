@@ -206,10 +206,15 @@ pip install -r requirements.txt
 
 3) Run the main simulation:
 ```bash
-python src/main.py
+python -m src.main
 ```
 
 If any CSV is missing, the simulation will fail.
+
+4) Smoke test S1–S5 scenarios:
+```bash
+python scripts/smoke_scenarios.py
+```
 
 ---
 
@@ -225,6 +230,11 @@ If any CSV is missing, the simulation will fail.
 
 - Pandapower: power-flow and time-series profiles (33-bus synthetic France).
 - Frequency model: aggregated impact estimate (assumption P_sys=100 GW).
+
+## Models used
+
+- `src/full_simulation.py`: pandapower time-series + Monte Carlo summary.
+- `src/resilience_auto_solver.py`: simplified ODE resilience experiment (mitigation vs no-mitigation).
 
 ---
 

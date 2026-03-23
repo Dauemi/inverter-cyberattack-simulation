@@ -25,3 +25,20 @@
 
 - The dashboard data is embedded in the HTML under `const D = {...}`.
 - Replace that JSON manually or regenerate it with a Python script.
+
+## Combined data build (France + Kaggle)
+
+1) Put the Kaggle CSVs in `dashboard/data/` (generation + weather files).
+2) Make sure France Sprint 3 CSVs are in `data/france_sprint3/`.
+3) Run:
+
+```bash
+python dashboard/build_dashboard_data.py \
+  --html ../2ASICYA_Dashboard.html \
+  --out dashboard/data/combined_dashboard.json \
+  --france-dir data/france_sprint3 \
+  --kaggle-dir dashboard/data \
+  --inject
+```
+
+This will update the HTML (`const D = {...}`) and keep the dashboard static but refreshed.

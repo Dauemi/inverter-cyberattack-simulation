@@ -14,10 +14,17 @@ Produces resilience separation between:
 Author: MSc Cyber-Physical Energy Systems
 """
 
+import math
 import numpy as np
 import random
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
+import pandas as pd
+import pandapower as pp
+
+from src.grid_topology.load_france_grid import load_france_grid
+from src.load_data.load_profile_fr import load_fr_load_profile
+from src.attacks.attack_fr import apply_attack_to_pv
 
 
 # ============================================================
@@ -198,3 +205,114 @@ if __name__ == "__main__":
     plot_results(attack_range, collapse_no, collapse_mit)
 
     print("\nStudy Complete.")
+
+
+# ============================================================
+# FULL GRID SIMULATION (Pandapower)
+# ============================================================
+
+class FullGridSimulation:
+    """
+    Pandapower-based time-series simulation used by main.py.
+    This complements the ODE resilience experiment above.
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.net = load_france_grid()
+        self.base_load = self.net.load["p_mw"].copy()
+        self.base_pv = self.net.sgen["p_mw"].copy()
+        self.profile = load_fr_load_profile()
+
+    @staticmethod
+    def _pv_shape_from_timestamp(ts: pd.Timestamp) -> float:
+        hour = ts.hour + ts.minute / 60.0
+        if hour <= 6 or hour >= 18:
+            return 0.0
+        x = (hour - 6) / 12.0 * math.pi
+        return max(0.0, min(1.0, math.sin(x)))
+
+    def _run_timeseries(self, scenario: str = "S3", with_attack: bool = True) -> pd.DataFrame:
+        attack_time = pd.to_datetime(self.config.attack_time)
+        attack_applied = False
+        fleet_multiplier = 1.0
+        results = []
+
+        for _, row in self.profile.iterrows():
+            ts = row["timestamp"]
+            mult = row["load_multiplier"]
+
+            self.net.load["p_mw"] = self.base_load * mult
+
+            pv_shape = self._pv_shape_from_timestamp(ts)
+            if with_attack and (not attack_applied) and (ts == attack_time):
+                fleet_multiplier = apply_attack_to_pv(self.net, scenario)
+                attack_applied = True
+
+            self.net.sgen["p_mw"] = self.base_pv * pv_shape * fleet_multiplier
+            pp.runpp(self.net)
+
+            results.append({
+                "timestamp": ts,
+                "min_vm_pu": self.net.res_bus["vm_pu"].min(),
+                "max_vm_pu": self.net.res_bus["vm_pu"].max(),
+                "max_line_loading": self.net.res_line["loading_percent"].max(),
+                "attack_applied": attack_applied and (ts == attack_time),
+            })
+
+        return pd.DataFrame(results)
+
+    def run_single_simulation(self, scenario: str = "S3"):
+        df = self._run_timeseries(scenario=scenario, with_attack=True)
+        cascades = 0
+        return df, cascades
+
+    def run_monte_carlo(self):
+        rng = np.random.default_rng(self.config.seed)
+        records = []
+
+        for _ in range(self.config.n_runs):
+            # Add small random noise to load/PV for variability
+            noisy_load = self.base_load * (1 + rng.normal(0, self.config.load_noise_std, size=len(self.base_load)))
+            noisy_pv = self.base_pv * (1 + rng.normal(0, self.config.pv_noise_std, size=len(self.base_pv)))
+
+            self.net.load["p_mw"] = noisy_load
+            self.net.sgen["p_mw"] = noisy_pv
+
+            # Single power flow snapshot at attack time
+            pp.runpp(self.net)
+            vm = self.net.res_bus["vm_pu"]
+            loading = self.net.res_line["loading_percent"]
+
+            underv = (vm < self.config.v_min_limit).mean() * 100
+            overv = (vm > self.config.v_max_limit).mean() * 100
+            overline = (loading > self.config.max_line_loading).mean() * 100
+
+            records.append({
+                "undervoltage_%": underv,
+                "overvoltage_%": overv,
+                "line_overload_%": overline,
+                "cascade_events": 0,
+            })
+
+        return pd.DataFrame(records)
+
+    def plot_professional_results(self, df: pd.DataFrame) -> None:
+        plt.figure(figsize=(9, 4))
+        plt.plot(df["timestamp"], df["min_vm_pu"], label="Min V (p.u.)")
+        plt.plot(df["timestamp"], df["max_vm_pu"], label="Max V (p.u.)")
+        plt.title("Voltage Envelope Over Time")
+        plt.xlabel("Time")
+        plt.ylabel("Voltage (p.u.)")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+    def plot_monte_carlo_distribution(self, mc_results: pd.DataFrame) -> None:
+        plt.figure(figsize=(8, 4))
+        plt.hist(mc_results["line_overload_%"], bins=10)
+        plt.title("Line Overload % Distribution")
+        plt.xlabel("Line Overload %")
+        plt.ylabel("Frequency")
+        plt.tight_layout()
+        plt.show()

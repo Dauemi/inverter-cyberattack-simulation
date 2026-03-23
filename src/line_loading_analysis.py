@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 import pandapower as pp
 
-from grid_topology.load_france_grid import load_france_grid
-from load_data.load_profile_fr import load_fr_load_profile
-from attacks.attack_fr import apply_attack_to_pv
+from src.grid_topology.load_france_grid import load_france_grid
+from src.load_data.load_profile_fr import load_fr_load_profile
+from src.attacks.attack_fr import apply_attack_to_pv
 
 
 def pv_shape_from_timestamp(ts: pd.Timestamp) -> float:

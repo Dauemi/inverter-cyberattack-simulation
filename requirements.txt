@@ -2,3 +2,4 @@ pandapower
 numpy
 pandas
 matplotlib
+numba

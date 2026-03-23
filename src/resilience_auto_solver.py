@@ -30,16 +30,16 @@ DT = 0.01
 ATTACK_START = 2.0
 DETECTION_DELAY = 1.0
 
-ATTACK_BASE = 0.8
-DAMPING = 1.8
+ATTACK_BASE = 0.6
+DAMPING = 2.2
 
-TRIP_MEAN = 0.85
-TRIP_STD = 0.01
+TRIP_MEAN = 0.88
+TRIP_STD = 0.012
 
-CASCADE_GAIN = 0.03   # Small and bounded
-NOISE_STD = 0.01
+CASCADE_GAIN = 0.02   # Small and bounded
+NOISE_STD = 0.008
 
-MONTE_CARLO_RUNS = 300
+MONTE_CARLO_RUNS = 200
 
 
 # ============================================================
@@ -68,7 +68,7 @@ def run_simulation(attack_scale=1.0, mitigate=False):
             detected = True
 
         if mitigate and detected:
-            attack *= 0.5   # 50% mitigation
+            attack *= 0.3   # stronger mitigation
 
         active_fraction = np.sum(active) / N_INVERTERS
 
