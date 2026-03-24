@@ -1,3 +1,26 @@
+# Things to KNOW
+Folder 1. dashboard/ → Visualization Layer
+Files:
+
+combined_dashboard.json
+
+build_dashboard_data.py
+
+README.md
+
+Purpose: This is where results are prepared for visualization.
+
+What it does:
+
+Takes processed data (risk scores, scenarios)
+
+Formats it into dashboard-ready structure (likely JSON)
+
+Used for reporting / presentation
+
+👉 In simple terms: “This folder turns raw simulation outputs into something we can display visually (charts, dashboards, reports).”
+
+
 # 2ASICYA Dashboard
 
 ## Open the dashboard

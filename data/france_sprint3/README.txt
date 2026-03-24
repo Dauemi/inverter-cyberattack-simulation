@@ -1,4 +1,4 @@
-2ASICYA – Sprint 3 Synthetic Datasets (France-Representative)
+ 2ASICYA – Sprint 3 Synthetic Datasets (France-Representative)
 
 IMPORTANT:
 - These datasets are SYNTHETIC and for academic simulation purposes.
@@ -19,3 +19,32 @@ Suggested use:
 - Build baseline powerflow with peak loads scaled by fr_load_profile_15min.csv multiplier.
 - Model PV generators using fr_grid_pv_generators.csv and inverter classes from fr_inverter_parameters.csv.
 - Prepare event hooks using fr_attack_scenarios_S1_S5.csv (Sprint 4 executes full scenarios).
+
+# Generalities about foler 2
+
+Folder 2. data/ → Input Data Layer
+Files:
+
+.gitkeep
+
+fr_attack_scenarios_S1_S5.csv
+
+fr_grid_metadata.json
+
+README.txt
+
+Purpose:
+
+This contains your raw datasets (from Kaggle + project data).
+
+Key files:
+
+fr_attack_scenarios_S1_S5.csv
+→ Contains attack scenarios (S1–S5)
+
+fr_grid_metadata.json
+→ Information about the grid (nodes, structure, etc.)
+
+👉 In simple terms:
+
+“This is the real-world data we use to simulate inverter cyberattacks.”
