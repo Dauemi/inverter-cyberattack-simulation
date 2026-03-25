@@ -3,10 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2ASICYA Dashboard</title>
-  <meta http-equiv="refresh" content="0; url=/2ASICYA_Dashboard.html" />
+  <title>2ASICYA — Live Dashboard</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0a0e27; color: #e0e6ed; }
+    .wrap { max-width: 980px; margin: 40px auto; padding: 0 20px; }
+    .card { background: #111833; border: 1px solid #1e3a5f; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    a.btn { display: inline-block; padding: 10px 16px; background: #1e90ff; color: #fff; border-radius: 6px; text-decoration: none; margin-right: 10px; }
+    label { display: block; margin-top: 10px; color: #9fb0c2; }
+    input { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #2b3b5f; background: #0d1b3e; color: #e0e6ed; }
+  </style>
 </head>
 <body>
-  <p>If you are not redirected, open <a href="/2ASICYA_Dashboard.html">2ASICYA_Dashboard.html</a>.</p>
+  <div class="wrap">
+    <h1>2ASICYA — Live System</h1>
+    <div class="card">
+      <h2>Dashboard (2D)</h2>
+      <a class="btn" href="/2ASICYA_Dashboard.html">Open Dashboard</a>
+    </div>
+
+    <div class="card">
+      <h2>Real‑Time 3D Viewer</h2>
+      <label>WebSocket URL (Render)</label>
+      <input id="wsUrl" placeholder="wss://YOUR-RENDER-APP.onrender.com/ws" />
+      <div style="margin-top:10px;">
+        <a class="btn" id="open3d" href="/realtime/index.html">Open 3D Viewer</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('wsUrl');
+    const btn = document.getElementById('open3d');
+    input.addEventListener('input', () => {
+      const url = encodeURIComponent(input.value.trim());
+      btn.href = `/realtime/index.html?ws=${url}`;
+    });
+  </script>
 </body>
 </html>

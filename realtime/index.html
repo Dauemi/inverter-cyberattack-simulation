@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2ASICYA Real-Time 3D Grid</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0a0e27; color: #e0e6ed; font-family: Arial, sans-serif; }
+    #ui { position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; }
+    #ui input { width: 360px; }
+    #stats { margin-top: 6px; font-size: 12px; color: #9fb0c2; }
+    #legend { position: absolute; bottom: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; font-size: 12px; }
+    .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <div><strong>Real-Time 3D Grid</strong></div>
+    <div style="margin-top:6px;">
+      WebSocket URL:
+      <input id="wsUrl" value="wss://YOUR-RENDER-APP.onrender.com/ws" />
+      <button id="connectBtn">Connect</button>
+    </div>
+    <div style="margin-top:6px;">
+      Scenario:
+      <select id="scenario">
+        <option>S1</option><option>S2</option><option>S3</option><option>S4</option><option>S5</option>
+      </select>
+      <button id="setScenario">Apply</button>
+    </div>
+    <div id="stats">Disconnected</div>
+  </div>
+  <div id="legend">
+    <div><span class="chip" style="background:#00c853;"></span>Voltage OK</div>
+    <div><span class="chip" style="background:#ffaa00;"></span>Voltage Warning</div>
+    <div><span class="chip" style="background:#ff4444;"></span>Voltage Critical</div>
+    <div style="margin-top:6px;"><span class="chip" style="background:#1e90ff;"></span>Line Load &lt; 80%</div>
+    <div><span class="chip" style="background:#ffaa00;"></span>Line Load 80–100%</div>
+    <div><span class="chip" style="background:#ff4444;"></span>Line Load &gt; 100%</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    const statsEl = document.getElementById('stats');
+    let socket;
+
+    function getWsFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const ws = params.get('ws');
+      return ws ? decodeURIComponent(ws) : null;
+    }
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 20, 30);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 8;
+    controls.maxDistance = 80;
+    controls.maxPolarAngle = Math.PI / 2.1;
+
+    const light = new THREE.DirectionalLight(0xffffff, 1.0);
+    light.position.set(10, 20, 10);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    // Ground plane (simple terrain)
+    const groundGeo = new THREE.PlaneGeometry(80, 80, 1, 1);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x0f1a33, roughness: 0.9, metalness: 0.1 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // Substation marker
+    const subGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+    const subMat = new THREE.MeshStandardMaterial({ color: 0x8899aa });
+    const substation = new THREE.Mesh(subGeo, subMat);
+    substation.position.set(0, 0.6, 0);
+    scene.add(substation);
+
+    const nodes = new Map();
+    const lines = [];
+    let tick = 0;
+    let lastPayload = null;
+    const heatPoints = [];
+
+    function makeTextSprite(text) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.font = '24px Arial';
+      const width = ctx.measureText(text).width + 20;
+      canvas.width = width;
+      canvas.height = 40;
+      ctx.font = '24px Arial';
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#e0e6ed';
+      ctx.fillText(text, 10, 28);
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(3, 1, 1);
+      return sprite;
+    }
+
+    function createGrid(buses, lineData) {
+      nodes.forEach(n => scene.remove(n));
+      lines.forEach(l => { scene.remove(l.line); scene.remove(l.marker); });
+      heatPoints.forEach(h => scene.remove(h.mesh));
+      nodes.clear();
+      lines.length = 0;
+      heatPoints.length = 0;
+
+      const n = buses.length;
+      const radius = 10;
+
+      buses.forEach((b, i) => {
+        const angle = (i / n) * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        const geo = new THREE.SphereGeometry(0.3, 16, 16);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x00d4ff });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, 0, z);
+        scene.add(mesh);
+        const label = makeTextSprite(b.name || `Bus ${b.bus_id}`);
+        label.position.set(x, 0.9, z);
+        scene.add(label);
+        const heatGeo = new THREE.CircleGeometry(0.8, 24);
+        const heatMat = new THREE.MeshBasicMaterial({ color: 0x00c853, transparent: true, opacity: 0.25 });
+        const heat = new THREE.Mesh(heatGeo, heatMat);
+        heat.rotation.x = -Math.PI / 2;
+        heat.position.set(x, 0.02, z);
+        scene.add(heat);
+
+        // PV panel or load icon (simple)
+        let icon = null;
+        if (i % 5 === 0) {
+          const pvGeo = new THREE.PlaneGeometry(0.9, 0.6);
+          const pvMat = new THREE.MeshStandardMaterial({ color: 0x00d4ff, side: THREE.DoubleSide });
+          icon = new THREE.Mesh(pvGeo, pvMat);
+          icon.rotation.x = -Math.PI / 4;
+          icon.position.set(x, 0.4, z);
+          scene.add(icon);
+        } else if (i % 5 === 1) {
+          const loadGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+          const loadMat = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
+          icon = new THREE.Mesh(loadGeo, loadMat);
+          icon.position.set(x, 0.25, z);
+          scene.add(icon);
+        }
+
+        nodes.set(b.bus_id, { mesh, label, heat, icon, baseColor: 0x00d4ff });
+        heatPoints.push({ mesh: heat });
+      });
+
+      lineData.forEach(l => {
+        const a = nodes.get(l.from_bus)?.mesh.position;
+        const b = nodes.get(l.to_bus)?.mesh.position;
+        if (!a || !b) return;
+        const points = [a.clone(), b.clone()];
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineBasicMaterial({ color: 0x1e90ff, linewidth: 1 });
+        const line = new THREE.Line(geo, mat);
+        scene.add(line);
+        const markerGeo = new THREE.SphereGeometry(0.12, 10, 10);
+        const markerMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const marker = new THREE.Mesh(markerGeo, markerMat);
+        marker.position.copy(a);
+        scene.add(marker);
+        lines.push({ line, marker, a: a.clone(), b: b.clone(), load: 0, phase: Math.random() });
+      });
+    }
+
+    function updateGrid(payload) {
+      const { buses, lines: lineData, stats, timestamp } = payload;
+
+      if (nodes.size === 0) {
+        createGrid(buses, lineData);
+      }
+
+      buses.forEach(b => {
+        const node = nodes.get(b.bus_id);
+        if (!node) return;
+        const v = b.vm_pu;
+        const color = v < 0.95 ? 0xff4444 : v > 1.05 ? 0xffaa00 : 0x00c853;
+        node.mesh.material.color.setHex(color);
+        node.heat.material.color.setHex(color);
+        node.heat.material.opacity = v < 0.95 ? 0.45 : v > 1.05 ? 0.35 : 0.25;
+      });
+
+      lineData.forEach((l, i) => {
+        if (!lines[i]) return;
+        const loading = l.loading;
+        const color = loading > 100 ? 0xff4444 : loading > 80 ? 0xffaa00 : 0x1e90ff;
+        lines[i].line.material.color.setHex(color);
+        lines[i].marker.material.color.setHex(color);
+        lines[i].load = loading;
+        // emulate thickness by scaling line geometry with a tube (visual hint)
+        const thickness = loading > 100 ? 0.08 : loading > 80 ? 0.06 : 0.04;
+        lines[i].line.scale.set(1, 1, thickness);
+      });
+
+      statsEl.textContent = `Time: ${timestamp} | Min V: ${stats.min_vm.toFixed(3)} | Max V: ${stats.max_vm.toFixed(3)} | Max Loading: ${stats.max_line_loading.toFixed(1)}%`;
+      lastPayload = payload;
+    }
+
+    function connect() {
+      const url = document.getElementById('wsUrl').value.trim();
+      socket = new WebSocket(url);
+      statsEl.textContent = "Connecting...";
+
+      socket.onopen = () => { statsEl.textContent = "Connected"; };
+      socket.onclose = () => { statsEl.textContent = "Disconnected"; };
+      socket.onerror = () => { statsEl.textContent = "Error"; };
+      socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        updateGrid(payload);
+      };
+    }
+
+    document.getElementById('connectBtn').onclick = connect;
+    document.getElementById('setScenario').onclick = () => {
+      if (!socket || socket.readyState !== 1) return;
+      const sc = document.getElementById('scenario').value;
+      socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
+    };
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Auto-fill WS from query and connect
+    const preset = getWsFromQuery();
+    if (preset) {
+      document.getElementById('wsUrl').value = preset;
+      connect();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      tick += 0.01;
+      // Flash effect during attack
+      if (lastPayload && lastPayload.attack_applied) {
+        const pulse = (Math.sin(tick * 20) + 1) / 2;
+        scene.background = new THREE.Color(`hsl(0, 60%, ${20 + pulse * 20}%)`);
+      } else {
+        scene.background = new THREE.Color(0x0a0e27);
+      }
+      // animate flow markers along lines
+      lines.forEach(l => {
+        const speed = Math.min(0.02 + (l.load / 200) * 0.05, 0.08);
+        const t = (tick * speed + l.phase) % 1;
+        const x = l.a.x + (l.b.x - l.a.x) * t;
+        const z = l.a.z + (l.b.z - l.a.z) * t;
+        l.marker.position.set(x, 0.05, z);
+      });
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
