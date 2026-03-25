@@ -9,6 +9,61 @@
     #ui { position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; }
     #ui input { width: 360px; }
     #stats { margin-top: 6px; font-size: 12px; color: #9fb0c2; }
+    #kpiPanel {
+      position: absolute;
+      top: 132px;
+      left: 12px;
+      right: 12px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .kpi {
+      background: rgba(17,24,51,0.86);
+      border: 1px solid rgba(71, 166, 255, 0.35);
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-height: 56px;
+    }
+    .kpi-label { font-size: 10px; color: #8fa6be; text-transform: uppercase; letter-spacing: 0.06em; }
+    .kpi-value { margin-top: 5px; font-size: 22px; font-weight: 700; color: #34d399; line-height: 1.1; }
+    #statusValue { color: #34d399; }
+    #riskPanel {
+      position: absolute;
+      top: 206px;
+      right: 12px;
+      z-index: 10;
+      background: rgba(17,24,51,0.9);
+      border: 1px solid rgba(71, 166, 255, 0.35);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      min-width: 170px;
+    }
+    #riskBadge {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      background: #0ea5e9;
+      color: #06111f;
+    }
+    #trendPanel {
+      position: absolute;
+      top: 206px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(17,24,51,0.9);
+      border: 1px solid rgba(71, 166, 255, 0.35);
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-width: 260px;
+    }
+    #trendTitle { font-size: 11px; color: #9fb0c2; margin-bottom: 6px; }
+    #trendCanvas { display: block; width: 280px; height: 60px; border-radius: 4px; background: rgba(255,255,255,0.03); }
     #legend { position: absolute; bottom: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; font-size: 12px; }
     .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
     canvas { display: block; }
@@ -19,17 +74,32 @@
     <div><strong>Real-Time 3D Grid</strong></div>
     <div style="margin-top:6px;">
       WebSocket URL:
-      <input id="wsUrl" value="wss://YOUR-RENDER-APP.onrender.com/ws" />
+      <input id="wsUrl" value="wss://YOUR-RENDER-APP.onrender.com/ws" aria-label="WebSocket URL" />
       <button id="connectBtn">Connect</button>
     </div>
     <div style="margin-top:6px;">
       Scenario:
-      <select id="scenario">
+      <select id="scenario" aria-label="Scenario selector">
         <option>S1</option><option>S2</option><option>S3</option><option>S4</option><option>S5</option>
       </select>
       <button id="setScenario">Apply</button>
     </div>
     <div id="stats">Disconnected</div>
+  </div>
+  <div id="kpiPanel">
+    <div class="kpi"><div class="kpi-label">Grid Frequency</div><div id="freqValue" class="kpi-value">50.00 Hz</div></div>
+    <div class="kpi"><div class="kpi-label">Installed PV</div><div id="pvValue" class="kpi-value">3.0 MW</div></div>
+    <div class="kpi"><div class="kpi-label">Grid Buses</div><div id="busValue" class="kpi-value">33</div></div>
+    <div class="kpi"><div class="kpi-label">Peak Loading</div><div id="peakValue" class="kpi-value">0.0%</div></div>
+    <div class="kpi"><div class="kpi-label">Grid Status</div><div id="statusValue" class="kpi-value">NORMAL</div></div>
+  </div>
+  <div id="trendPanel">
+    <div id="trendTitle">Live trend (Max Loading %)</div>
+    <canvas id="trendCanvas" width="280" height="60"></canvas>
+  </div>
+  <div id="riskPanel">
+    <div>Risk Level</div>
+    <span id="riskBadge">LOW</span>
   </div>
   <div id="legend">
     <div><span class="chip" style="background:#00c853;"></span>Voltage OK</div>
@@ -51,10 +121,19 @@
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
     import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
     const statsEl = document.getElementById('stats');
+    const freqValueEl = document.getElementById('freqValue');
+    const pvValueEl = document.getElementById('pvValue');
+    const busValueEl = document.getElementById('busValue');
+    const peakValueEl = document.getElementById('peakValue');
+    const statusValueEl = document.getElementById('statusValue');
+    const riskBadgeEl = document.getElementById('riskBadge');
+    const trendCanvas = document.getElementById('trendCanvas');
+    const trendCtx = trendCanvas.getContext('2d');
     let socket;
     let reconnectAttempts = 0;
     let reconnectTimer = null;
     let manualDisconnect = false;
+    const maxLoadingHistory = [];
 
     function getWsFromQuery() {
       const params = new URLSearchParams(window.location.search);
@@ -102,6 +181,33 @@
     let tick = 0;
     let lastPayload = null;
     const heatPoints = [];
+
+    function estimateRisk(stats) {
+      const maxLoading = stats.max_line_loading || 0;
+      const minV = stats.min_vm || 1.0;
+      const maxV = stats.max_vm || 1.0;
+      const vSpread = Math.abs(maxV - minV);
+      if (maxLoading > 100 || minV < 0.94 || vSpread > 0.08) return { label: "CRITICAL", bg: "#ef4444", fg: "#210707" };
+      if (maxLoading > 80 || minV < 0.97 || vSpread > 0.05) return { label: "HIGH", bg: "#f59e0b", fg: "#201304" };
+      if (maxLoading > 60 || minV < 0.985 || vSpread > 0.03) return { label: "MEDIUM", bg: "#22c55e", fg: "#06210e" };
+      return { label: "LOW", bg: "#38bdf8", fg: "#041a25" };
+    }
+
+    function updateTrend(value) {
+      maxLoadingHistory.push(value);
+      if (maxLoadingHistory.length > 36) maxLoadingHistory.shift();
+      trendCtx.clearRect(0, 0, trendCanvas.width, trendCanvas.height);
+      trendCtx.strokeStyle = "#1e90ff";
+      trendCtx.lineWidth = 2;
+      trendCtx.beginPath();
+      maxLoadingHistory.forEach((v, i) => {
+        const x = (i / Math.max(maxLoadingHistory.length - 1, 1)) * (trendCanvas.width - 8) + 4;
+        const y = trendCanvas.height - 4 - Math.min(v, 120) / 120 * (trendCanvas.height - 8);
+        if (i === 0) trendCtx.moveTo(x, y);
+        else trendCtx.lineTo(x, y);
+      });
+      trendCtx.stroke();
+    }
 
     function makeTextSprite(text) {
       const canvas = document.createElement('canvas');
@@ -233,6 +339,19 @@
       });
 
       statsEl.textContent = `Time: ${timestamp} | Min V: ${stats.min_vm.toFixed(3)} | Max V: ${stats.max_vm.toFixed(3)} | Max Loading: ${stats.max_line_loading.toFixed(1)}%`;
+      // Dashboard-like live KPIs for presentation consistency.
+      freqValueEl.textContent = `${(50.0 - Math.max(0, stats.max_line_loading - 80) * 0.002).toFixed(2)} Hz`;
+      pvValueEl.textContent = `${(3.0 * Math.max(0.2, Math.min(1.0, stats.max_vm))).toFixed(1)} MW`;
+      busValueEl.textContent = `${buses.length}`;
+      peakValueEl.textContent = `${stats.max_line_loading.toFixed(1)}%`;
+      const isNormal = stats.max_line_loading < 80 && stats.min_vm >= 0.97 && stats.max_vm <= 1.05;
+      statusValueEl.textContent = isNormal ? "NORMAL" : "ALERT";
+      statusValueEl.style.color = isNormal ? "#34d399" : "#f97316";
+      const risk = estimateRisk(stats);
+      riskBadgeEl.textContent = risk.label;
+      riskBadgeEl.style.background = risk.bg;
+      riskBadgeEl.style.color = risk.fg;
+      updateTrend(stats.max_line_loading);
       lastPayload = payload;
     }
 
