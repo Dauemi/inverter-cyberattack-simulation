@@ -155,15 +155,17 @@ python -m pytest -v
 ```
 
 📌 Example Output
+
 5 passed in 2.69s
+
 🎯 Purpose
 
 This validation layer ensures:
 
-Reproducibility
-Stability across scenarios
-Early error detection
-Reliability of simulation outputs
+1. Reproducibility
+2. Stability across scenarios
+3. Early error detection
+4. Reliability of simulation outputs
 
 ⚡ Quick Smoke Test
 ```bash
