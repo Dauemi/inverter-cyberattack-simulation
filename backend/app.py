@@ -58,6 +58,15 @@ class SimulationState:
         self.scenario = scenario
         self.attack_applied = False
         self.fleet_multiplier = 1.0
+        # Jump to midday so PV is non-zero and scenario effects are visible.
+        target_hour = 12
+        candidate_idx = self.idx
+        for i in range(len(self.profile)):
+            ts = self.profile.iloc[i]["timestamp"]
+            if ts.hour == target_hour:
+                candidate_idx = i
+                break
+        self.idx = candidate_idx
         # Apply selected scenario immediately on next simulation tick
         # so S1..S5 changes are visible right away in the 3D view.
         self.force_apply_on_next_step = True
@@ -73,7 +82,19 @@ class SimulationState:
             (not self.attack_applied) and (ts == self.attack_time or self.force_apply_on_next_step)
         )
         if should_apply_attack:
-            self.fleet_multiplier = apply_attack_to_pv(self.net, self.scenario)
+            base_multiplier = apply_attack_to_pv(self.net, self.scenario)
+            # Demo-oriented scaling for clearer S1..S5 visual separation in real-time 3D.
+            visual_floor_by_scenario = {
+                "S1": 0.95,
+                "S2": 0.80,
+                "S3": 0.65,
+                "S4": 0.45,
+                "S5": 0.20,
+            }
+            self.fleet_multiplier = min(
+                base_multiplier,
+                visual_floor_by_scenario.get(self.scenario, base_multiplier),
+            )
             self.attack_applied = True
             self.force_apply_on_next_step = False
 
@@ -111,6 +132,7 @@ class SimulationState:
                 "max_vm": float(self.net.res_bus["vm_pu"].max()),
                 "max_line_loading": float(self.net.res_line["loading_percent"].max()),
             },
+            "fleet_multiplier": float(self.fleet_multiplier),
             "buses": buses,
             "lines": lines,
         }

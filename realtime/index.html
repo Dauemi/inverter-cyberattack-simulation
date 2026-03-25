@@ -298,7 +298,7 @@
     }
 
     function updateGrid(payload) {
-      const { buses, lines: lineData, stats, timestamp } = payload;
+      const { buses, lines: lineData, stats, timestamp, scenario, fleet_multiplier } = payload;
 
       // Defensive guard: backend may send non-visual messages (info/error) on init.
       if (!buses || !lineData || !stats) {
@@ -338,7 +338,8 @@
         lines[i].line.scale.set(1, 1, thickness);
       });
 
-      statsEl.textContent = `Time: ${timestamp} | Min V: ${stats.min_vm.toFixed(3)} | Max V: ${stats.max_vm.toFixed(3)} | Max Loading: ${stats.max_line_loading.toFixed(1)}%`;
+      const multText = (typeof fleet_multiplier === "number") ? fleet_multiplier.toFixed(2) : "n/a";
+      statsEl.textContent = `Time: ${timestamp} | Scenario: ${scenario || "-"} | Fleet x${multText} | Min V: ${stats.min_vm.toFixed(3)} | Max V: ${stats.max_vm.toFixed(3)} | Max Loading: ${stats.max_line_loading.toFixed(1)}%`;
       // Dashboard-like live KPIs for presentation consistency.
       freqValueEl.textContent = `${(50.0 - Math.max(0, stats.max_line_loading - 80) * 0.002).toFixed(2)} Hz`;
       pvValueEl.textContent = `${(3.0 * Math.max(0.2, Math.min(1.0, stats.max_vm))).toFixed(1)} MW`;
