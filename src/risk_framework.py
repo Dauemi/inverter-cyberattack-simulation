@@ -1,3 +1,18 @@
+# NOTE:
+# Risk scores (impact and likelihood) are currently assigned based on
+# engineering judgement and scenario definitions (S1–S5).
+#
+# While simulation outputs (voltage deviation, frequency drop, line loading)
+# are available, a fully automated mapping from physical metrics to risk scores
+# is not implemented in this version.
+#
+# This simplification allows consistent comparison across scenarios but is
+# acknowledged as a limitation.
+#
+# Future work:
+# - Map ΔV, Δf, and loading to quantitative impact scores
+# - Use probabilistic likelihood models based on threat intelligence
+
 import os
 import pandas as pd
 

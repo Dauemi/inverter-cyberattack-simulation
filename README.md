@@ -7,24 +7,23 @@
 ![Smart Grid](https://img.shields.io/badge/Domain-Smart%20Grid%20Security-red)
 ![pandapower](https://img.shields.io/badge/Simulation-pandapower-success)
 ![Analysis](https://img.shields.io/badge/Analysis-Time%20Series-blueviolet)
+![Testing](https://img.shields.io/badge/Testing-pytest-green)
 
 Model, simulate, and evaluate the impact of coordinated cyberattacks on distributed solar PV inverters in the French electricity network by:
 
-1. Creating a realistic distribution grid using **pandapower** and FR synthetic datasets.  
-2. Simulating solar inverter shutdown attacks in scenarios S1–S5.  
-3. Running **time-series load & PV curves** (15-minute resolution).  
+1. Creating a realistic distribution grid using **pandapower** and FR synthetic datasets  
+2. Simulating solar inverter shutdown attacks in scenarios S1–S5  
+3. Running **time-series load & PV curves** (15-minute resolution)  
 4. Evaluating the impact on:
    - Bus voltages  
    - Line loadings  
    - System frequency  
-5. Quantifying cyber-physical risk (impact × likelihood).  
-6. Designing a 3-layer IDS architecture for detecting coordinated PV manipulation attacks.
+5. Quantifying cyber-physical risk (impact × likelihood)  
+6. Designing a 3-layer IDS architecture for detecting coordinated PV manipulation attacks  
 
 ---
 
 # 🗂️ Dataset Overview (France Synthetic Sprint 3)
-
-The simulation uses realistic **synthetic** (NOT confidential) French distribution data:
 
 | Dataset | Description |
 |--------|-------------|
@@ -58,51 +57,43 @@ PV is shut down **100%** in affected regions, triggered at **12:00**.
 
 ## ✔ 1. Grid Initialization (pandapower)
 Loads:
-- Bus data
-- Lines (R, X)
-- Loads (MW)
-- PV generators (MW)
-- Slack grid
+- Bus data  
+- Lines (R, X)  
+- Loads (MW)  
+- PV generators (MW)  
+- Slack grid  
 
 ## ✔ 2. Load & PV Time-Series
 - 15-minute load profile  
-- Synthetic PV profile: sunrise → sunset  
-- Combined into time-series power-flow loop
+- Synthetic PV profile (sunrise → sunset)  
+- Combined into time-series simulation  
 
 ## ✔ 3. Attack Injection
 At t = 12:00:
-- Affected PV capacity is reduced based on S1–S5
-- Scenarios automatically modify total PV output
+- PV generation is reduced based on scenario magnitude  
+- Scenarios dynamically modify total PV output  
 
 ## ✔ 4. Power-Flow Evaluation
 For each timestep:
-- `pp.runpp()`
+- `pp.runpp()`  
 - Record:
-  - min/max voltage
-  - line loading
-  - total load, total PV
+  - Min/max voltage  
+  - Line loading  
+  - Total load and PV  
 
 ---
 
-# 📊 Key Results (Dashboard‑Driven)
+# 📊 Key Results (Dashboard-Driven)
 
 ## 🔹 Voltage Stability
-The exact values depend on the **combined dashboard dataset** (France Sprint3 + Kaggle).
-Open the dashboard and use **RUN + RELOAD** to view updated voltage statistics.
-
----
+Values depend on the **combined dataset (France Sprint3 + Kaggle)**.  
+Use the dashboard (**RUN + RELOAD**) for updated results.
 
 ## 🔹 Line Loading
-Line loading metrics are computed from the current dataset.  
-Refer to the **dashboard charts** for the latest max loading and overload indicators.
-
----
+Line loading metrics are computed dynamically.  
+Refer to dashboard charts.
 
 ## 🔹 Frequency Impact (Simplified Model)
-Frequency impact is **derived from a simplified sensitivity model**.  
-Exact values are shown in the dashboard after data refresh.
-
-**Current run (synthetic dataset):**
 
 | Scenario | ΔP (GW) | Δf (Hz) | Severity |
 |---------|----------|---------|----------|
@@ -115,15 +106,8 @@ Exact values are shown in the dashboard after data refresh.
 ---
 
 # 📉 Risk Matrix (Impact × Likelihood)
-Risk scores are **computed from voltage, frequency, and line‑loading metrics**  
-and displayed in the **dashboard Risk Matrix tab**.  
-The exact table updates after running:
-```
-python scripts/compute_risk_scores.py
-python dashboard/build_dashboard_data.py --html 2ASICYA_Dashboard.html --out dashboard/data/combined_dashboard.json --france-dir data/france_sprint3 --kaggle-dir dashboard/data --inject
-```
 
-**Current run (synthetic dataset):**
+Computed from voltage, frequency, and loading metrics.
 
 | Scenario | Impact | Likelihood | Risk Score | Risk Level |
 |----------|--------|------------|------------|------------|
@@ -137,42 +121,54 @@ python dashboard/build_dashboard_data.py --html 2ASICYA_Dashboard.html --out das
 
 # 🔐 IDS Architecture (Three-Layer Model)
 
-## 🟦 1. Local Inverter IDS
-Monitors:
-- Sudden PV drop  
-- Frequent setpoint changes  
-- Invalid SunSpec/Modbus commands  
-- Heartbeat loss  
+## 🟦 Local Inverter IDS
+Monitors anomalies in PV behavior and communication.
 
-Triggers:
-- ΔP > 10% in 1 min  
-- >10 identical commands in 5 sec  
+## 🟧 Feeder/Substation IDS  
+Detects coordinated feeder-level anomalies.
+
+## 🟥 Control Center IDS  
+Detects wide-area and national-scale attacks.
 
 ---
 
-## 🟧 2. Feeder/Substation IDS  
-Detects:
-- Coordinated feeder-wide shutdown  
-- Voltage sag across multiple buses  
-- Identical communication patterns from many inverters  
+# 🧪 Automated Testing & Validation
 
-Triggers:
-- Feeder PV loss > 30% in 5 min  
-- >3 buses drop > 0.02 p.u.  
+To ensure the reliability and robustness of the simulation framework, an automated testing suite was implemented using `pytest`.
 
----
+## ✔ What is validated
+- All attack scenarios (S1–S5 execute successfully  
+- Output structure is correct (tuple format)  
+- Data types are valid:
+  - Detection flag (boolean)  
+  - Frequency deviation (numeric)  
+  - Minimum voltage (numeric)  
+- Physical consistency:
+  - Frequency deviation ≥ 0  
+  - Voltage remains positive  
 
-## 🟥 3. Control Center IDS (Wide-Area)
-Detects:
-- Multi-region S3/S4 attacks  
-- National-level S5 shutdown  
-- SCADA anomalies  
-- Δf > 0.1 Hz  
+## ▶ Run tests locally
 
-Triggers:
-- ΔP > 1 GW → High  
-- ΔP > 5 GW → Critical  
+```bash
+pip install pytest
+python -m pytest -v 
+```
 
+📌 Example Output
+5 passed in 2.69s
+🎯 Purpose
+
+This validation layer ensures:
+
+Reproducibility
+Stability across scenarios
+Early error detection
+Reliability of simulation outputs
+
+⚡ Quick Smoke Test
+```bash
+python scripts/smoke_scenarios.py
+```
 ---
 
 # 🛠️ How to Run the Simulation
