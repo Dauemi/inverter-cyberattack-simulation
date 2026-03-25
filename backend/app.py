@@ -10,6 +10,7 @@ import pandas as pd
 import pandapower as pp
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.routing import WebSocketRoute
 
 # NOTE: This backend is meant to run on Render as a real-time FastAPI WebSocket service.
 # It should be started with: `python -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT`
@@ -113,6 +114,27 @@ class SimulationState:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/routes")
+def routes():
+    """
+    Debug endpoint: tells which websocket/http routes are registered in the deployed app.
+    Useful to verify Render deploy configuration.
+    """
+    ws_routes = []
+    http_routes = []
+    for r in app.routes:
+        if isinstance(r, WebSocketRoute):
+            ws_routes.append(r.path)
+        else:
+            # Starlette route objects may not have methods attribute; guard it.
+            path = getattr(r, "path", None)
+            methods = getattr(r, "methods", None)
+            if path and methods:
+                http_routes.append(path)
+
+    return {"http_routes": sorted(set(http_routes)), "websocket_routes": sorted(set(ws_routes))}
 
 
 @app.websocket("/ws")
