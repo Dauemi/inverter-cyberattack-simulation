@@ -194,6 +194,18 @@
     function updateGrid(payload) {
       const { buses, lines: lineData, stats, timestamp } = payload;
 
+      // Defensive guard: backend may send non-visual messages (info/error) on init.
+      if (!buses || !lineData || !stats) {
+        if (payload && payload.type === "error") {
+          statsEl.textContent = `Simulation error: ${payload.error || "unknown error"}`;
+        } else if (payload && payload.type === "info") {
+          statsEl.textContent = payload.message ? `Status: ${payload.message}` : "Status update";
+        } else {
+          statsEl.textContent = "Waiting for simulation data...";
+        }
+        return;
+      }
+
       if (nodes.size === 0) {
         createGrid(buses, lineData);
       }
@@ -270,6 +282,11 @@
       socket.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
+          // Ignore non-simulation messages.
+          if (payload && payload.type && (payload.type === "info" || payload.type === "error")) {
+            updateGrid(payload); // will show a meaningful message via guard above
+            return;
+          }
           updateGrid(payload);
         } catch (e) {
           console.error("Invalid WS payload:", e, event.data);
