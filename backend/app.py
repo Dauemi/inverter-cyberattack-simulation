@@ -118,7 +118,20 @@ def health():
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
-    sim = SimulationState()
+    try:
+        sim = SimulationState()
+    except Exception as e:
+        # If the simulation can't initialize (missing CSVs, bad paths, etc),
+        # tell the client explicitly so it can display the error.
+        try:
+            await ws.send_text(json.dumps({"type": "error", "error": str(e)}))
+        except Exception:
+            pass
+        try:
+            await ws.close(code=1011, reason="Simulation init error")
+        except Exception:
+            pass
+        return
 
     async def receiver():
         while True:
@@ -137,7 +150,14 @@ async def ws_endpoint(ws: WebSocket):
             payload = sim.step()
             await ws.send_text(json.dumps(payload))
             await asyncio.sleep(1.0)
-    except Exception:
-        pass
+    except Exception as e:
+        try:
+            await ws.send_text(json.dumps({"type": "error", "error": str(e)}))
+        except Exception:
+            pass
+        try:
+            await ws.close(code=1011, reason="Simulation error")
+        except Exception:
+            pass
     finally:
         recv_task.cancel()

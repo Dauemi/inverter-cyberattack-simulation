@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pandas as pd
 
-PROFILE_CSV = "data/france_sprint3/fr_load_profile_15min.csv"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROFILE_CSV = PROJECT_ROOT / "data" / "france_sprint3" / "fr_load_profile_15min.csv"
 
 def load_fr_load_profile():
     """

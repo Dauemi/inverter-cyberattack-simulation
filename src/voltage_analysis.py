@@ -1,7 +1,11 @@
+from pathlib import Path
+
 import pandas as pd
 
-BASE_CSV = "results/timeseries_BASE_no_attack_with_pv_profile.csv"
-ATTACK_CSV = "results/timeseries_S3_attack_12_00_with_pv_profile.csv"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+BASE_CSV = PROJECT_ROOT / "results" / "timeseries_BASE_no_attack_with_pv_profile.csv"
+ATTACK_CSV = PROJECT_ROOT / "results" / "timeseries_S3_attack_12_00_with_pv_profile.csv"
 
 def main():
     base = pd.read_csv(BASE_CSV)

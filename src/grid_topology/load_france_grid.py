@@ -1,14 +1,19 @@
+from pathlib import Path
+
 import pandas as pd
 import pandapower as pp
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 def load_france_grid():
-    base = "data/france_sprint3/"
+    # Use absolute paths so the code works even if Render changes CWD.
+    base = PROJECT_ROOT / "data" / "france_sprint3"
 
     # Load CSV files
-    buses = pd.read_csv(base + "fr_grid_buses.csv")
-    lines = pd.read_csv(base + "fr_grid_lines.csv")
-    loads = pd.read_csv(base + "fr_grid_loads.csv")
-    pv = pd.read_csv(base + "fr_grid_pv_generators.csv")
+    buses = pd.read_csv(base / "fr_grid_buses.csv")
+    lines = pd.read_csv(base / "fr_grid_lines.csv")
+    loads = pd.read_csv(base / "fr_grid_loads.csv")
+    pv = pd.read_csv(base / "fr_grid_pv_generators.csv")
 
     # Create empty pandapower network
     net = pp.create_empty_network()

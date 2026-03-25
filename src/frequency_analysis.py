@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pandas as pd
 
-ATTACK_CSV = "data/france_sprint3/fr_attack_scenarios_S1_S5.csv"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ATTACK_CSV = PROJECT_ROOT / "data" / "france_sprint3" / "fr_attack_scenarios_S1_S5.csv"
 
 # Assumed system properties (for the whole European / national grid)
 P_SYS_GW = 100.0      # total online generation, in GW (assumption)

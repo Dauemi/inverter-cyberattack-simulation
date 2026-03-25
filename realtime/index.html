@@ -40,11 +40,14 @@
     <div><span class="chip" style="background:#ff4444;"></span>Line Load &gt; 100%</div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-  <script>
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
     const statsEl = document.getElementById('stats');
     let socket;
+    let reconnectAttempts = 0;
+    let reconnectTimer = null;
+    let manualDisconnect = false;
 
     function getWsFromQuery() {
       const params = new URLSearchParams(window.location.search);
@@ -61,7 +64,7 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.minDistance = 8;
@@ -216,15 +219,54 @@
 
     function connect() {
       const url = document.getElementById('wsUrl').value.trim();
-      socket = new WebSocket(url);
-      statsEl.textContent = "Connecting...";
+      if (!url) {
+        statsEl.textContent = "Missing WebSocket URL";
+        return;
+      }
 
-      socket.onopen = () => { statsEl.textContent = "Connected"; };
-      socket.onclose = () => { statsEl.textContent = "Disconnected"; };
-      socket.onerror = () => { statsEl.textContent = "Error"; };
+      manualDisconnect = false;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+
+      // Avoid duplicate connections if the user clicks multiple times.
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+
+      statsEl.textContent = `Connecting... (${url})`;
+      socket = new WebSocket(url);
+
+      socket.onopen = () => {
+        reconnectAttempts = 0;
+        statsEl.textContent = "Connected";
+      };
+
+      socket.onerror = (event) => {
+        // Browsers don't provide detailed error reason on 'error' reliably; console will help.
+        console.error("WebSocket error:", event);
+        statsEl.textContent = "WebSocket error (check DevTools console)";
+      };
+
+      socket.onclose = (event) => {
+        const reason = event && event.reason ? `: ${event.reason}` : "";
+        statsEl.textContent = `Disconnected (code ${event.code}${reason})`;
+
+        if (!manualDisconnect) {
+          reconnectAttempts += 1;
+          const delayMs = Math.min(10000, 500 + reconnectAttempts * 1000);
+          reconnectTimer = setTimeout(connect, delayMs);
+        }
+      };
+
       socket.onmessage = (event) => {
-        const payload = JSON.parse(event.data);
-        updateGrid(payload);
+        try {
+          const payload = JSON.parse(event.data);
+          updateGrid(payload);
+        } catch (e) {
+          console.error("Invalid WS payload:", e, event.data);
+        }
       };
     }
 
