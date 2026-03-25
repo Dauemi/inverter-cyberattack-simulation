@@ -3,7 +3,7 @@ __pycache__/
 *.zip
 *.png
 *.csv
-!data/france_sprint3/fr_attack_scenarios_S1_S5.csv
+!data/france_sprint3/*.csv
 results/
 venv/
 .venv/

@@ -1,0 +1,4 @@
+class,rated_kw,max_ramp_pct_per_s,ride_through,comms
+Class-A,500,5,A,Modbus
+Class-B,750,7,B,SunSpec
+Class-C,1000,10,C,IEC-61850
