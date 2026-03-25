@@ -52,11 +52,15 @@ class SimulationState:
         self.attack_time = pd.to_datetime("2026-02-04 12:00:00")
         self.attack_applied = False
         self.fleet_multiplier = 1.0
+        self.force_apply_on_next_step = False
 
     def set_scenario(self, scenario: str) -> None:
         self.scenario = scenario
         self.attack_applied = False
         self.fleet_multiplier = 1.0
+        # Apply selected scenario immediately on next simulation tick
+        # so S1..S5 changes are visible right away in the 3D view.
+        self.force_apply_on_next_step = True
 
     def step(self) -> dict:
         row = self.profile.iloc[self.idx]
@@ -65,9 +69,13 @@ class SimulationState:
 
         self.net.load["p_mw"] = self.base_load * mult
 
-        if (not self.attack_applied) and (ts == self.attack_time):
+        should_apply_attack = (
+            (not self.attack_applied) and (ts == self.attack_time or self.force_apply_on_next_step)
+        )
+        if should_apply_attack:
             self.fleet_multiplier = apply_attack_to_pv(self.net, self.scenario)
             self.attack_applied = True
+            self.force_apply_on_next_step = False
 
         pv_shape = pv_shape_from_timestamp(ts)
         self.net.sgen["p_mw"] = self.base_pv * pv_shape * self.fleet_multiplier
@@ -97,7 +105,7 @@ class SimulationState:
         payload = {
             "timestamp": ts.strftime("%Y-%m-%d %H:%M:%S"),
             "scenario": self.scenario,
-            "attack_applied": self.attack_applied and (ts == self.attack_time),
+            "attack_applied": self.attack_applied,
             "stats": {
                 "min_vm": float(self.net.res_bus["vm_pu"].min()),
                 "max_vm": float(self.net.res_bus["vm_pu"].max()),
