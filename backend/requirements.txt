@@ -3,3 +3,4 @@ uvicorn
 pandapower
 numpy
 pandas
+websockets
