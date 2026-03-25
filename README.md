@@ -246,6 +246,22 @@ python scripts/smoke_scenarios.py
 - `src/`: simulation, analysis, risk, and plotting modules.
 - `data/france_sprint3/`: synthetic France datasets (CSV + metadata).
 - `dashboard/`: dashboard guide and data placeholders.
+- `backend/`: real-time FastAPI + WebSocket backend (Render).
+- `realtime/`: Three.js 3D real-time viewer.
+
+---
+
+# 🧪 Real-Time 3D (Render + Vercel)
+
+## Backend (Render)
+1) Deploy using `render.yaml` (FastAPI + WebSocket).
+2) After deployment, copy the WebSocket URL:
+   `wss://YOUR-RENDER-APP.onrender.com/ws`
+
+## Frontend (Vercel)
+1) Open `realtime/index.html`.
+2) Paste the WebSocket URL into the input.
+3) Click **Connect** and choose scenario.
 
 ---
 
