@@ -1,3 +1,26 @@
+# IMPORTANT LIMITATION:
+# This frequency deviation model is a simplified linear approximation used for
+# high-level scenario comparison only.
+#
+# Formula used:
+#   delta_f = -0.5 * (fraction_lost / 0.10)
+#
+# This assumes a direct proportional relationship between generation loss and
+# system frequency deviation, without explicitly modelling:
+# - system inertia,
+# - swing equation dynamics,
+# - primary frequency response (droop control),
+# - spinning reserves / Frequency Containment Reserves (FCR),
+# - governor response time.
+#
+# As a result, the model is not intended to represent the true dynamic frequency
+# response of the European interconnected power system. It may overestimate
+# frequency deviation for small disturbances and underestimate it for larger,
+# time-dependent events.
+#
+# It is retained here as a transparent and reproducible first-order approximation
+# for comparing cyberattack scenarios (S1-S5) within the project scope.~
+
 from pathlib import Path
 
 import pandas as pd
