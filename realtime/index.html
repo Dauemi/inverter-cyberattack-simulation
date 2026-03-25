@@ -181,6 +181,12 @@
     let tick = 0;
     let lastPayload = null;
     const heatPoints = [];
+    let attackVisualIntensity = 0;
+
+    function getScenarioSeverity(scenario) {
+      const map = { S1: 0.12, S2: 0.25, S3: 0.40, S4: 0.60, S5: 0.85 };
+      return map[scenario] || 0.10;
+    }
 
     function estimateRisk(stats) {
       const maxLoading = stats.max_line_loading || 0;
@@ -316,25 +322,37 @@
         createGrid(buses, lineData);
       }
 
-      buses.forEach(b => {
+      const scenarioSeverity = getScenarioSeverity(scenario);
+      const affectedBusCount = Math.max(1, Math.floor(buses.length * scenarioSeverity));
+      buses.forEach((b, idx) => {
         const node = nodes.get(b.bus_id);
         if (!node) return;
         const v = b.vm_pu;
-        const color = v < 0.95 ? 0xff4444 : v > 1.05 ? 0xffaa00 : 0x00c853;
+        const isScenarioAffected = idx < affectedBusCount;
+        let color = v < 0.95 ? 0xff4444 : v > 1.05 ? 0xffaa00 : 0x00c853;
+        if (isScenarioAffected) {
+          color = scenarioSeverity >= 0.60 ? 0xff2d2d : scenarioSeverity >= 0.40 ? 0xff7a1a : 0xffb020;
+        }
         node.mesh.material.color.setHex(color);
         node.heat.material.color.setHex(color);
-        node.heat.material.opacity = v < 0.95 ? 0.45 : v > 1.05 ? 0.35 : 0.25;
+        node.heat.material.opacity = isScenarioAffected ? Math.min(0.70, 0.25 + scenarioSeverity * 0.6) : (v < 0.95 ? 0.45 : v > 1.05 ? 0.35 : 0.25);
       });
 
+      const affectedLineCount = Math.max(1, Math.floor(lineData.length * scenarioSeverity));
       lineData.forEach((l, i) => {
         if (!lines[i]) return;
         const loading = l.loading;
-        const color = loading > 100 ? 0xff4444 : loading > 80 ? 0xffaa00 : 0x1e90ff;
+        const isScenarioAffected = i < affectedLineCount;
+        let color = loading > 100 ? 0xff4444 : loading > 80 ? 0xffaa00 : 0x1e90ff;
+        if (isScenarioAffected) {
+          color = scenarioSeverity >= 0.60 ? 0xff4444 : scenarioSeverity >= 0.40 ? 0xff8c1a : 0xffc33a;
+        }
         lines[i].line.material.color.setHex(color);
         lines[i].marker.material.color.setHex(color);
         lines[i].load = loading;
         // emulate thickness by scaling line geometry with a tube (visual hint)
-        const thickness = loading > 100 ? 0.08 : loading > 80 ? 0.06 : 0.04;
+        const thicknessBase = loading > 100 ? 0.08 : loading > 80 ? 0.06 : 0.04;
+        const thickness = isScenarioAffected ? thicknessBase + scenarioSeverity * 0.04 : thicknessBase;
         lines[i].line.scale.set(1, 1, thickness);
       });
 
@@ -352,6 +370,8 @@
       riskBadgeEl.textContent = risk.label;
       riskBadgeEl.style.background = risk.bg;
       riskBadgeEl.style.color = risk.fg;
+      // Scenario visual intensity used in animation pulse.
+      attackVisualIntensity = scenarioSeverity;
       updateTrend(stats.max_line_loading);
       lastPayload = payload;
     }
@@ -440,7 +460,9 @@
       // Flash effect during attack
       if (lastPayload && lastPayload.attack_applied) {
         const pulse = (Math.sin(tick * 20) + 1) / 2;
-        scene.background = new THREE.Color(`hsl(0, 60%, ${20 + pulse * 20}%)`);
+        const sat = 45 + attackVisualIntensity * 35;
+        const light = 16 + pulse * (12 + attackVisualIntensity * 20);
+        scene.background = new THREE.Color(`hsl(0, ${sat}%, ${light}%)`);
       } else {
         scene.background = new THREE.Color(0x0a0e27);
       }
