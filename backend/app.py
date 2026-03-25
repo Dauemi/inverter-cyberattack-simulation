@@ -11,6 +11,9 @@ import pandapower as pp
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
+# NOTE: This backend is meant to run on Render as a real-time FastAPI WebSocket service.
+# It should be started with: `python -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT`
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))

@@ -3,4 +3,6 @@ services:
     name: 2asicya-realtime
     env: python
     buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
+    # Use `python -m uvicorn` to avoid issues where the `uvicorn` executable
+    # is not on PATH in Render environments.
+    startCommand: "python -m uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
