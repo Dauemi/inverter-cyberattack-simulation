@@ -119,6 +119,13 @@ def health():
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     try:
+        # Let the client know the WebSocket handshake succeeded, then init simulation.
+        # This avoids "idle" timeouts on some proxies if simulation init is heavy.
+        try:
+            await ws.send_text(json.dumps({"type": "info", "message": "ws_accepted"}))
+        except Exception:
+            pass
+
         sim = SimulationState()
     except Exception as e:
         # If the simulation can't initialize (missing CSVs, bad paths, etc),
