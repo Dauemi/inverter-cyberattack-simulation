@@ -135,7 +135,7 @@
     <div><strong>Real-Time 3D Grid</strong></div>
     <div style="margin-top:6px;">
       WebSocket URL:
-      <input id="wsUrl" value="wss://YOUR-RENDER-APP.onrender.com/ws" aria-label="WebSocket URL" />
+      <input id="wsUrl" value="wss://inverter-cyberattack-simulation-1.onrender.com/ws" aria-label="WebSocket URL" />
       <button id="connectBtn">Connect</button>
     </div>
     <div style="margin-top:6px;">
@@ -148,8 +148,19 @@
     <div id="topActions">
       <button id="presentationBtn" class="mini-btn">Presentation Mode</button>
       <button id="sirenBtn" class="mini-btn">Test Siren</button>
+      <button id="voiceBtn" class="mini-btn">Voice AI</button>
     </div>
     <div id="stats">Disconnected</div>
+  </div>
+  <div id="aiPanel" style="position:absolute;top:12px;right:12px;z-index:10;background:rgba(17,24,51,0.9);border:1px solid rgba(71,166,255,0.35);border-radius:8px;padding:8px 10px;max-width:360px">
+    <div style="font-weight:700;font-size:12px;color:#9fd4ff">AI Cyber Assistant (EN)</div>
+    <div id="aiHint" style="font-size:11px;color:#9fb0c2;margin-top:4px">Commands: connect, scenario S1-S5, apply scenario S3, siren test, presentation mode.</div>
+    <input id="aiInput" aria-label="AI command input" placeholder="Type command in English..." style="margin-top:6px;width:100%;background:#0d1731;color:#e0e6ed;border:1px solid #2f4f7a;border-radius:6px;padding:6px" />
+    <div style="margin-top:6px;display:flex;gap:6px">
+      <button id="aiSendBtn" class="mini-btn">Send</button>
+      <button id="aiTalkBtn" class="mini-btn">Start Voice</button>
+    </div>
+    <div id="aiLog" style="margin-top:6px;font-size:11px;color:#b3c3d6;max-height:70px;overflow:auto">Ready.</div>
   </div>
   <div id="kpiPanel">
     <div class="kpi"><div class="kpi-label">Grid Frequency</div><div id="freqValue" class="kpi-value">50.00 Hz</div></div>
@@ -213,6 +224,9 @@
     const compromisedValueEl = document.getElementById('compromisedValue');
     const durationValueEl = document.getElementById('durationValue');
     const deltaFValueEl = document.getElementById('deltaFValue');
+    const aiInputEl = document.getElementById('aiInput');
+    const aiLogEl = document.getElementById('aiLog');
+    const aiTalkBtnEl = document.getElementById('aiTalkBtn');
     let socket;
     let reconnectAttempts = 0;
     let reconnectTimer = null;
@@ -224,6 +238,8 @@
     let presentationMode = false;
     let juryOverlayTimer = null;
     let sirenRecorded = null;
+    let speechRec = null;
+    let speechListening = false;
 
     const SCENARIO_PROFILES = {
       S1: { lostPowerGw: 0.1, compromisedPct: 0.1, durationMin: 5, deltaF: -0.000, level: 1 },
@@ -248,6 +264,55 @@
       const params = new URLSearchParams(window.location.search);
       const ws = params.get('ws');
       return ws ? decodeURIComponent(ws) : null;
+    }
+
+    function aiLog(msg) {
+      aiLogEl.textContent = msg;
+    }
+
+    function setScenarioAndApply(sc) {
+      document.getElementById('scenario').value = sc;
+      if (socket && socket.readyState === 1) {
+        socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
+      }
+      showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null);
+      playRealisticSiren(sc);
+      aiLog(`Applied ${sc}.`);
+    }
+
+    function runAICommand(rawCommand) {
+      const cmd = (rawCommand || "").trim().toLowerCase();
+      if (!cmd) return;
+      if (cmd.includes("connect")) {
+        connect();
+        aiLog("Connecting to realtime WebSocket.");
+        return;
+      }
+      if (cmd.includes("disconnect")) {
+        if (socket) {
+          manualDisconnect = true;
+          socket.close();
+          aiLog("Disconnected.");
+        }
+        return;
+      }
+      const scenarioMatch = cmd.match(/\bs([1-5])\b/);
+      if (scenarioMatch) {
+        const sc = `S${scenarioMatch[1]}`;
+        setScenarioAndApply(sc);
+        return;
+      }
+      if (cmd.includes("siren")) {
+        playRealisticSiren(document.getElementById('scenario').value);
+        aiLog("Siren played.");
+        return;
+      }
+      if (cmd.includes("presentation")) {
+        document.getElementById('presentationBtn').click();
+        aiLog("Toggled presentation mode.");
+        return;
+      }
+      aiLog("Unknown command. Try: connect, scenario S4, apply scenario S5, siren test.");
     }
 
     const scene = new THREE.Scene();
@@ -748,6 +813,48 @@
     document.getElementById('sirenBtn').onclick = () => {
       const sc = document.getElementById('scenario').value;
       playRealisticSiren(sc);
+    };
+    document.getElementById('aiSendBtn').onclick = () => {
+      runAICommand(aiInputEl.value);
+      aiInputEl.value = "";
+    };
+    aiInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        runAICommand(aiInputEl.value);
+        aiInputEl.value = "";
+      }
+    });
+    aiTalkBtnEl.onclick = () => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        aiLog("Speech recognition is not supported in this browser.");
+        return;
+      }
+      if (!speechRec) {
+        speechRec = new SR();
+        speechRec.lang = "en-US";
+        speechRec.interimResults = false;
+        speechRec.maxAlternatives = 1;
+        speechRec.onresult = (event) => {
+          const text = event.results[0][0].transcript || "";
+          aiLog(`Voice: "${text}"`);
+          runAICommand(text);
+        };
+        speechRec.onend = () => {
+          speechListening = false;
+          aiTalkBtnEl.textContent = "Start Voice";
+        };
+      }
+      if (speechListening) {
+        speechRec.stop();
+        speechListening = false;
+        aiTalkBtnEl.textContent = "Start Voice";
+      } else {
+        speechRec.start();
+        speechListening = true;
+        aiTalkBtnEl.textContent = "Stop Voice";
+        aiLog("Listening for English command...");
+      }
     };
     document.getElementById('presentationBtn').onclick = async () => {
       presentationMode = !presentationMode;

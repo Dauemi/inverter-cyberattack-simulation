@@ -18,7 +18,7 @@ body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0a0e27; color: 
 .header h1 { font-size: 1.6em; color: #fff; }
 .header h1 span { color: #00d4ff; }
 .header .subtitle { color: #8899aa; font-size: 0.85em; margin-top: 4px; }
-.status-badge { background: #00c853; color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 0.8em; font-weight: 600; cursor: pointer; user-select: none; }
+.status-badge { background: #00c853; color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 0.8em; font-weight: 600; cursor: pointer; -webkit-user-select: none; user-select: none; }
 .status-badge.off { background: #9aa3ad; color: #0a0e27; }
 .header-actions { display: flex; gap: 10px; align-items: center; }
 .run-btn {
@@ -123,6 +123,7 @@ table.info-table tr:hover { background: #1a254522; }
   </div>
   <div class="header-actions">
     <button id="run-reload" class="run-btn" onclick="runAndReload()">RUN + RELOAD</button>
+    <button id="open-live-3d" class="run-btn" onclick="openRealtime3D()">LIVE 3D</button>
     <div id="simulation-status" class="status-badge" onclick="toggleSimulation()">&#9679; SIMULATION ON</div>
   </div>
 </div>
@@ -259,7 +260,7 @@ table.info-table tr:hover { background: #1a254522; }
 
 <div class="footer">
   2ASICYA &mdash; Actions Against Solar Inverter Cyber Attack &bull; ECE Paris 2025-2026 &bull; Synthetic data
-  <br>Recommended dataset: <a href="https://www.kaggle.com/datasets/anikannal/solar-power-generation-data" target="_blank" style="color:#00d4ff">Solar Power Generation Data (Kaggle)</a>
+  <br>Recommended dataset: <a href="https://www.kaggle.com/datasets/anikannal/solar-power-generation-data" target="_blank" rel="noopener noreferrer" style="color:#00d4ff">Solar Power Generation Data (Kaggle)</a>
 </div>
 
 <script>
@@ -597,6 +598,12 @@ function toggleSimulation() {
     badge.textContent = '● SIMULATION ON';
     loadDashboardData();
   }
+}
+
+function openRealtime3D() {
+  const ws = encodeURIComponent('wss://inverter-cyberattack-simulation-1.onrender.com/ws');
+  const url = `realtime/index.html?ws=${ws}`;
+  window.open(url, '_blank');
 }
 
 // ===== INIT =====
