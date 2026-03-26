@@ -128,6 +128,25 @@
       color: #ffb4a0;
       font-weight: 600;
     }
+    @media (max-width: 1280px), (max-height: 760px) {
+      #ui { transform: scale(0.93); transform-origin: top left; }
+      #aiPanel { transform: scale(0.93); transform-origin: top right; }
+      #kpiPanel { top: 156px; }
+      #riskPanel { top: 206px; }
+      #trendPanel { bottom: 104px; }
+      #scenarioPanel { width: min(420px, calc(100% - 220px)); }
+      .scenario-value { font-size: 20px; }
+      #legend { transform: scale(0.92); transform-origin: bottom left; }
+    }
+    @media (max-width: 1080px), (max-height: 680px) {
+      #ui { transform: scale(0.86); }
+      #aiPanel { transform: scale(0.86); }
+      #kpiPanel { top: 146px; grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+      #riskPanel { top: 262px; right: 8px; }
+      #trendPanel { bottom: 96px; left: 8px; min-width: 200px; }
+      #scenarioPanel { bottom: 8px; right: 8px; width: min(380px, calc(100% - 200px)); }
+      #legend { bottom: 8px; left: 8px; font-size: 10px; }
+    }
   </style>
 </head>
 <body>
