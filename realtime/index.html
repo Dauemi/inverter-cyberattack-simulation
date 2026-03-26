@@ -270,45 +270,60 @@
       aiLogEl.textContent = msg;
     }
 
-    function aiSpeak(text) {
-      if (!("speechSynthesis" in window)) return;
+    function aiSpeak(text, onEnd) {
+      if (!("speechSynthesis" in window)) {
+        if (typeof onEnd === "function") onEnd();
+        return;
+      }
       try {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = "en-US";
-        u.rate = 1.0;
+        // Slower pace improves intelligibility during live demo.
+        u.rate = 0.88;
         u.pitch = 1.0;
         const voices = window.speechSynthesis.getVoices() || [];
-        const enVoice = voices.find(v => (v.lang || "").toLowerCase().startsWith("en"));
+        const enVoice =
+          voices.find(v => (v.name || "").toLowerCase().includes("google us english")) ||
+          voices.find(v => (v.lang || "").toLowerCase() === "en-us") ||
+          voices.find(v => (v.lang || "").toLowerCase().startsWith("en"));
         if (enVoice) u.voice = enVoice;
+        if (typeof onEnd === "function") u.onend = onEnd;
         window.speechSynthesis.speak(u);
-      } catch (_) {}
+      } catch (_) {
+        if (typeof onEnd === "function") onEnd();
+      }
     }
 
-    function setScenarioAndApply(sc) {
+    function setScenarioAndApply(sc, options = {}) {
+      const fromAssistant = !!options.fromAssistant;
       document.getElementById('scenario').value = sc;
       if (socket && socket.readyState === 1) {
         socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
       }
-      showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null);
-      playRealisticSiren(sc);
       const p = SCENARIO_PROFILES[sc] || SCENARIO_PROFILES.S1;
-      const reply = `Applied ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
-      aiLog(reply);
-      aiSpeak(reply);
+      if (fromAssistant) {
+        const spoken = `Executing ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
+        aiLog(spoken);
+        // Coordinate voice first, then show scenario card for 30 seconds and trigger siren.
+        aiSpeak(spoken, () => {
+          showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 30000);
+          playRealisticSiren(sc);
+          aiLog(`Scenario ${sc} visual card active for 30 seconds.`);
+        });
+      } else {
+        showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 2600);
+        playRealisticSiren(sc);
+        const reply = `Applied ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
+        aiLog(reply);
+        aiSpeak(reply);
+      }
     }
 
     function runAICommand(rawCommand) {
       const cmd = (rawCommand || "").trim().toLowerCase();
       if (!cmd) return;
-      if (cmd.includes("connect")) {
-        connect();
-        const reply = "Connecting to the realtime WebSocket now.";
-        aiLog(reply);
-        aiSpeak(reply);
-        return;
-      }
-      if (cmd.includes("disconnect")) {
+      if (/\bdisconnect\b/.test(cmd)) {
         if (socket) {
           manualDisconnect = true;
           socket.close();
@@ -316,6 +331,13 @@
           aiLog(reply);
           aiSpeak(reply);
         }
+        return;
+      }
+      if (/\bconnect\b/.test(cmd)) {
+        connect();
+        const reply = "Connecting to the realtime WebSocket now.";
+        aiLog(reply);
+        aiSpeak(reply);
         return;
       }
       if (cmd.includes("status") || cmd.includes("what is happening") || cmd.includes("summary")) {
@@ -331,7 +353,7 @@
       const scenarioMatch = cmd.match(/\bs([1-5])\b/);
       if (scenarioMatch) {
         const sc = `S${scenarioMatch[1]}`;
-        setScenarioAndApply(sc);
+        setScenarioAndApply(sc, { fromAssistant: true });
         return;
       }
       if (cmd.includes("siren")) {
@@ -436,7 +458,7 @@
       trendCtx.stroke();
     }
 
-    function showJuryOverlay(scenario, stats) {
+    function showJuryOverlay(scenario, stats, durationMs = 2600) {
       const overlay = document.getElementById("juryOverlay");
       const line1 = document.getElementById("juryScenarioLine");
       const line2 = document.getElementById("jurySubLine");
@@ -455,7 +477,7 @@
       juryOverlayTimer = setTimeout(() => {
         overlay.classList.remove("visible");
         overlay.hidden = true;
-      }, 2600);
+      }, durationMs);
     }
 
     function playScenarioAlert(scenario) {
