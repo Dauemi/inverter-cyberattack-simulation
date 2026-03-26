@@ -64,6 +64,25 @@
     }
     #trendTitle { font-size: 11px; color: #9fb0c2; margin-bottom: 6px; }
     #trendCanvas { display: block; width: 280px; height: 60px; border-radius: 4px; background: rgba(255,255,255,0.03); }
+    #scenarioPanel {
+      position: absolute;
+      top: 206px;
+      left: 310px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 8px;
+      max-width: 760px;
+    }
+    .scenario-card {
+      background: rgba(17,24,51,0.9);
+      border: 1px solid rgba(255, 132, 0, 0.5);
+      border-radius: 8px;
+      padding: 6px 8px;
+      min-height: 54px;
+    }
+    .scenario-label { font-size: 10px; color: #9fb0c2; text-transform: uppercase; }
+    .scenario-value { margin-top: 4px; font-size: 30px; font-weight: 800; color: #ff5555; line-height: 1; }
     #legend { position: absolute; bottom: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; font-size: 12px; }
     .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
     canvas { display: block; }
@@ -101,6 +120,12 @@
     <div>Risk Level</div>
     <span id="riskBadge">LOW</span>
   </div>
+  <div id="scenarioPanel">
+    <div class="scenario-card"><div class="scenario-label">Lost Power</div><div id="lostPowerValue" class="scenario-value">0.1 GW</div></div>
+    <div class="scenario-card"><div class="scenario-label">Compromised Inverters</div><div id="compromisedValue" class="scenario-value">0.1%</div></div>
+    <div class="scenario-card"><div class="scenario-label">Attack Duration</div><div id="durationValue" class="scenario-value">5 min</div></div>
+    <div class="scenario-card"><div class="scenario-label">Frequency Deviation</div><div id="deltaFValue" class="scenario-value">-0.000 Hz</div></div>
+  </div>
   <div id="legend">
     <div><span class="chip" style="background:#00c853;"></span>Voltage OK</div>
     <div><span class="chip" style="background:#ffaa00;"></span>Voltage Warning</div>
@@ -129,11 +154,25 @@
     const riskBadgeEl = document.getElementById('riskBadge');
     const trendCanvas = document.getElementById('trendCanvas');
     const trendCtx = trendCanvas.getContext('2d');
+    const lostPowerValueEl = document.getElementById('lostPowerValue');
+    const compromisedValueEl = document.getElementById('compromisedValue');
+    const durationValueEl = document.getElementById('durationValue');
+    const deltaFValueEl = document.getElementById('deltaFValue');
     let socket;
     let reconnectAttempts = 0;
     let reconnectTimer = null;
     let manualDisconnect = false;
     const maxLoadingHistory = [];
+    let lastAlertScenario = "";
+    let lastAlertMs = 0;
+
+    const SCENARIO_PROFILES = {
+      S1: { lostPowerGw: 0.1, compromisedPct: 0.1, durationMin: 5, deltaF: -0.000, level: 1 },
+      S2: { lostPowerGw: 0.4, compromisedPct: 0.4, durationMin: 10, deltaF: -0.000, level: 2 },
+      S3: { lostPowerGw: 1.0, compromisedPct: 1.0, durationMin: 15, deltaF: -0.050, level: 3 },
+      S4: { lostPowerGw: 2.0, compromisedPct: 2.0, durationMin: 20, deltaF: -0.100, level: 4 },
+      S5: { lostPowerGw: 5.0, compromisedPct: 5.0, durationMin: 30, deltaF: -0.250, level: 5 }
+    };
 
     function getWsFromQuery() {
       const params = new URLSearchParams(window.location.search);
@@ -215,6 +254,37 @@
       trendCtx.stroke();
     }
 
+    function playScenarioAlert(scenario) {
+      const now = Date.now();
+      if (scenario === lastAlertScenario && (now - lastAlertMs) < 3000) return;
+      lastAlertScenario = scenario;
+      lastAlertMs = now;
+      const level = (SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1).level;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const audio = new Ctx();
+      const gain = audio.createGain();
+      gain.connect(audio.destination);
+      gain.gain.value = 0.0001;
+      const osc = audio.createOscillator();
+      osc.type = level >= 4 ? "sawtooth" : "square";
+      osc.connect(gain);
+      const t0 = audio.currentTime;
+      const baseHz = 360 + level * 110;
+      osc.frequency.setValueAtTime(baseHz, t0);
+      osc.frequency.linearRampToValueAtTime(baseHz + 120, t0 + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.14, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+      if (level >= 3) {
+        osc.frequency.setValueAtTime(baseHz + 200, t0 + 0.20);
+        gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.22);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.36);
+      }
+      osc.start(t0);
+      osc.stop(t0 + 0.40);
+      setTimeout(() => audio.close().catch(() => {}), 800);
+    }
+
     function makeTextSprite(text) {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -281,7 +351,7 @@
           scene.add(icon);
         }
 
-        nodes.set(b.bus_id, { mesh, label, heat, icon, baseColor: 0x00d4ff });
+        nodes.set(b.bus_id, { mesh, label, heat, icon, baseColor: 0x00d4ff, basePosition: mesh.position.clone() });
         heatPoints.push({ mesh: heat });
       });
 
@@ -333,6 +403,12 @@
         if (isScenarioAffected) {
           color = scenarioSeverity >= 0.60 ? 0xff2d2d : scenarioSeverity >= 0.40 ? 0xff7a1a : 0xffb020;
         }
+        const radialBoost = isScenarioAffected ? (1 + scenarioSeverity * 0.6) : 1;
+        const base = node.basePosition;
+        node.mesh.position.set(base.x * radialBoost, base.y, base.z * radialBoost);
+        node.label.position.set(base.x * radialBoost, 0.9, base.z * radialBoost);
+        if (node.icon) node.icon.position.set(base.x * radialBoost, node.icon.position.y, base.z * radialBoost);
+        node.heat.position.set(base.x * radialBoost, 0.02, base.z * radialBoost);
         node.mesh.material.color.setHex(color);
         node.heat.material.color.setHex(color);
         node.heat.material.opacity = isScenarioAffected ? Math.min(0.70, 0.25 + scenarioSeverity * 0.6) : (v < 0.95 ? 0.45 : v > 1.05 ? 0.35 : 0.25);
@@ -341,6 +417,12 @@
       const affectedLineCount = Math.max(1, Math.floor(lineData.length * scenarioSeverity));
       lineData.forEach((l, i) => {
         if (!lines[i]) return;
+        const fromPos = nodes.get(l.from_bus)?.mesh.position;
+        const toPos = nodes.get(l.to_bus)?.mesh.position;
+        if (!fromPos || !toPos) return;
+        lines[i].line.geometry.setFromPoints([fromPos.clone(), toPos.clone()]);
+        lines[i].a = fromPos.clone();
+        lines[i].b = toPos.clone();
         const loading = l.loading;
         const isScenarioAffected = i < affectedLineCount;
         let color = loading > 100 ? 0xff4444 : loading > 80 ? 0xffaa00 : 0x1e90ff;
@@ -358,6 +440,11 @@
 
       const multText = (typeof fleet_multiplier === "number") ? fleet_multiplier.toFixed(2) : "n/a";
       statsEl.textContent = `Time: ${timestamp} | Scenario: ${scenario || "-"} | Fleet x${multText} | Min V: ${stats.min_vm.toFixed(3)} | Max V: ${stats.max_vm.toFixed(3)} | Max Loading: ${stats.max_line_loading.toFixed(1)}%`;
+      const scenarioProfile = SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1;
+      lostPowerValueEl.textContent = `${scenarioProfile.lostPowerGw} GW`;
+      compromisedValueEl.textContent = `${scenarioProfile.compromisedPct}%`;
+      durationValueEl.textContent = `${scenarioProfile.durationMin} min`;
+      deltaFValueEl.textContent = `${scenarioProfile.deltaF.toFixed(3)} Hz`;
       // Dashboard-like live KPIs for presentation consistency.
       freqValueEl.textContent = `${(50.0 - Math.max(0, stats.max_line_loading - 80) * 0.002).toFixed(2)} Hz`;
       pvValueEl.textContent = `${(3.0 * Math.max(0.2, Math.min(1.0, stats.max_vm))).toFixed(1)} MW`;
@@ -372,6 +459,7 @@
       riskBadgeEl.style.color = risk.fg;
       // Scenario visual intensity used in animation pulse.
       attackVisualIntensity = scenarioSeverity;
+      if (payload.attack_applied && scenario) playScenarioAlert(scenario);
       updateTrend(stats.max_line_loading);
       lastPayload = payload;
     }
