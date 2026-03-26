@@ -8,7 +8,7 @@
     html, body { margin: 0; height: 100%; background: #0a0e27; color: #e0e6ed; font-family: Arial, sans-serif; }
     #ui { position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(17,24,51,0.9); padding: 8px 10px; border-radius: 8px; }
     #ui input { width: 320px; }
-    #stats { margin-top: 4px; font-size: 10px; color: #9fb0c2; max-width: 560px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #stats { margin-top: 4px; font-size: 9px; color: #9fb0c2; max-width: 500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #topActions { margin-top: 6px; display: flex; gap: 6px; }
     .mini-btn { background: #1a66d6; color: #fff; border: 1px solid #4ea1ff; border-radius: 6px; padding: 3px 7px; font-size: 11px; cursor: pointer; }
     #kpiPanel {
@@ -242,6 +242,9 @@
     let sirenRecorded = null;
     let speechRec = null;
     let speechListening = false;
+    let attackLoopCtx = null;
+    let attackLoopNodes = null;
+    let activeScenarioSound = null;
     let demoLocked = false;
     let demoTimer = null;
     let demoIndex = 0;
@@ -283,6 +286,7 @@
         return;
       }
       try {
+        pauseAttackLoop();
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = "en-US";
@@ -295,9 +299,13 @@
           voices.find(v => (v.lang || "").toLowerCase() === "en-us") ||
           voices.find(v => (v.lang || "").toLowerCase().startsWith("en"));
         if (enVoice) u.voice = enVoice;
-        if (typeof onEnd === "function") u.onend = onEnd;
+        u.onend = () => {
+          resumeAttackLoop();
+          if (typeof onEnd === "function") onEnd();
+        };
         window.speechSynthesis.speak(u);
       } catch (_) {
+        resumeAttackLoop();
         if (typeof onEnd === "function") onEnd();
       }
     }
@@ -309,6 +317,72 @@
           sirenRecorded.pause();
           sirenRecorded.currentTime = 0;
         }
+      } catch (_) {}
+      stopAttackLoop();
+    }
+
+    function startAttackLoop(scenario) {
+      const sc = scenario || "S1";
+      if (activeScenarioSound === sc && attackLoopCtx && attackLoopCtx.state !== "closed") return;
+      stopAttackLoop();
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const params = {
+        S1: { base: 180, lfo: 1.2, gain: 0.020, type: "sine" },
+        S2: { base: 220, lfo: 1.8, gain: 0.026, type: "triangle" },
+        S3: { base: 280, lfo: 2.5, gain: 0.032, type: "sawtooth" },
+        S4: { base: 350, lfo: 3.2, gain: 0.040, type: "square" },
+        S5: { base: 430, lfo: 4.0, gain: 0.048, type: "square" }
+      }[sc] || { base: 220, lfo: 1.8, gain: 0.026, type: "triangle" };
+      attackLoopCtx = new Ctx();
+      const osc = attackLoopCtx.createOscillator();
+      const lfo = attackLoopCtx.createOscillator();
+      const lfoGain = attackLoopCtx.createGain();
+      const gain = attackLoopCtx.createGain();
+      const hp = attackLoopCtx.createBiquadFilter();
+      osc.type = params.type;
+      osc.frequency.value = params.base;
+      lfo.type = "sine";
+      lfo.frequency.value = params.lfo;
+      lfoGain.gain.value = 45;
+      gain.gain.value = params.gain;
+      hp.type = "highpass";
+      hp.frequency.value = 120;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      osc.connect(hp);
+      hp.connect(gain);
+      gain.connect(attackLoopCtx.destination);
+      osc.start();
+      lfo.start();
+      attackLoopNodes = { osc, lfo, gain };
+      activeScenarioSound = sc;
+    }
+
+    function stopAttackLoop() {
+      activeScenarioSound = null;
+      try {
+        if (attackLoopNodes) {
+          attackLoopNodes.osc.stop();
+          attackLoopNodes.lfo.stop();
+        }
+      } catch (_) {}
+      attackLoopNodes = null;
+      try {
+        if (attackLoopCtx) attackLoopCtx.close();
+      } catch (_) {}
+      attackLoopCtx = null;
+    }
+
+    function pauseAttackLoop() {
+      try {
+        if (attackLoopCtx && attackLoopCtx.state === "running") attackLoopCtx.suspend();
+      } catch (_) {}
+    }
+
+    function resumeAttackLoop() {
+      try {
+        if (attackLoopCtx && attackLoopCtx.state === "suspended") attackLoopCtx.resume();
       } catch (_) {}
     }
 
@@ -331,6 +405,7 @@
           setTimeout(() => {
             sendScenarioToBackend(sc);
             playRealisticSiren(sc);
+            startAttackLoop(sc);
           }, 5000);
           aiLog(`Scenario ${sc} announced, then activated.`);
         });
@@ -339,6 +414,7 @@
         setTimeout(() => {
           sendScenarioToBackend(sc);
           playRealisticSiren(sc);
+          startAttackLoop(sc);
         }, 5000);
         const reply = `Applied ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
         aiLog(reply);
@@ -846,7 +922,7 @@
       });
 
       const multText = (typeof fleet_multiplier === "number") ? fleet_multiplier.toFixed(2) : "n/a";
-      statsEl.textContent = `Time: ${timestamp} | Scenario: ${scenario || "-"} | Fleet x${multText} | Min V: ${stats.min_vm.toFixed(3)} | Max V: ${stats.max_vm.toFixed(3)} | Max Loading: ${stats.max_line_loading.toFixed(1)}%`;
+      statsEl.textContent = `T ${timestamp.slice(11)} | ${scenario || "-"} | x${multText} | V ${stats.min_vm.toFixed(3)}-${stats.max_vm.toFixed(3)} | L ${stats.max_line_loading.toFixed(1)}%`;
       const scenarioProfile = SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1;
       lostPowerValueEl.textContent = `${scenarioProfile.lostPowerGw} GW`;
       compromisedValueEl.textContent = `${scenarioProfile.compromisedPct}%`;
