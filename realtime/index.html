@@ -13,35 +13,36 @@
     .mini-btn { background: #1a66d6; color: #fff; border: 1px solid #4ea1ff; border-radius: 6px; padding: 3px 7px; font-size: 11px; cursor: pointer; }
     #kpiPanel {
       position: absolute;
-      top: 168px;
+      top: 164px;
       left: 10px;
-      right: 10px;
+      right: auto;
+      width: min(560px, calc(100% - 390px));
       z-index: 10;
       display: grid;
-      grid-template-columns: repeat(5, minmax(140px, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(3, minmax(95px, 1fr));
+      gap: 5px;
     }
     .kpi {
-      background: rgba(17,24,51,0.86);
+      background: rgba(17,24,51,0.76);
       border: 1px solid rgba(71, 166, 255, 0.35);
       border-radius: 8px;
-      padding: 6px 8px;
-      min-height: 46px;
+      padding: 5px 7px;
+      min-height: 38px;
     }
-    .kpi-label { font-size: 10px; color: #8fa6be; text-transform: uppercase; letter-spacing: 0.06em; }
-    .kpi-value { margin-top: 4px; font-size: 15px; font-weight: 700; color: #34d399; line-height: 1.1; }
+    .kpi-label { font-size: 9px; color: #8fa6be; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi-value { margin-top: 3px; font-size: 13px; font-weight: 700; color: #34d399; line-height: 1.1; }
     #statusValue { color: #34d399; }
     #riskPanel {
       position: absolute;
-      top: 222px;
+      top: 196px;
       right: 10px;
       z-index: 10;
-      background: rgba(17,24,51,0.9);
+      background: rgba(17,24,51,0.78);
       border: 1px solid rgba(71, 166, 255, 0.35);
       border-radius: 8px;
       padding: 6px 8px;
       font-size: 11px;
-      min-width: 150px;
+      min-width: 138px;
     }
     #riskBadge {
       display: inline-block;
@@ -55,17 +56,17 @@
     }
     #trendPanel {
       position: absolute;
-      bottom: 118px;
+      bottom: 104px;
       left: 10px;
       z-index: 10;
-      background: rgba(17,24,51,0.9);
+      background: rgba(17,24,51,0.76);
       border: 1px solid rgba(71, 166, 255, 0.35);
       border-radius: 8px;
       padding: 8px 10px;
-      min-width: 230px;
+      min-width: 210px;
     }
     #trendTitle { font-size: 10px; color: #9fb0c2; margin-bottom: 4px; }
-    #trendCanvas { display: block; width: 240px; height: 52px; border-radius: 4px; background: rgba(255,255,255,0.03); }
+    #trendCanvas { display: block; width: 220px; height: 46px; border-radius: 4px; background: rgba(255,255,255,0.03); }
     #scenarioPanel {
       position: absolute;
       bottom: 10px;
@@ -77,14 +78,14 @@
       width: min(460px, calc(100% - 240px));
     }
     .scenario-card {
-      background: rgba(17,24,51,0.9);
+      background: rgba(17,24,51,0.76);
       border: 1px solid rgba(255, 132, 0, 0.5);
       border-radius: 8px;
       padding: 5px 7px;
       min-height: 44px;
     }
     .scenario-label { font-size: 10px; color: #9fb0c2; text-transform: uppercase; }
-    .scenario-value { margin-top: 3px; font-size: 24px; font-weight: 800; color: #ff5555; line-height: 1; }
+    .scenario-value { margin-top: 3px; font-size: 20px; font-weight: 800; color: #ff5555; line-height: 1; }
     #legend { position: absolute; bottom: 10px; left: 10px; z-index: 10; background: rgba(17,24,51,0.9); padding: 8px 10px; border-radius: 8px; font-size: 11px; }
     .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
     canvas { display: block; }
@@ -131,18 +132,18 @@
     @media (max-width: 1280px), (max-height: 760px) {
       #ui { transform: scale(0.93); transform-origin: top left; }
       #aiPanel { transform: scale(0.93); transform-origin: top right; }
-      #kpiPanel { top: 156px; }
-      #riskPanel { top: 206px; }
-      #trendPanel { bottom: 104px; }
+      #kpiPanel { top: 152px; width: min(520px, calc(100% - 370px)); }
+      #riskPanel { top: 190px; }
+      #trendPanel { bottom: 96px; }
       #scenarioPanel { width: min(420px, calc(100% - 220px)); }
-      .scenario-value { font-size: 20px; }
+      .scenario-value { font-size: 18px; }
       #legend { transform: scale(0.92); transform-origin: bottom left; }
     }
     @media (max-width: 1080px), (max-height: 680px) {
       #ui { transform: scale(0.86); }
       #aiPanel { transform: scale(0.86); }
-      #kpiPanel { top: 146px; grid-template-columns: repeat(3, minmax(120px, 1fr)); }
-      #riskPanel { top: 262px; right: 8px; }
+      #kpiPanel { top: 142px; width: min(470px, calc(100% - 330px)); grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+      #riskPanel { top: 232px; right: 8px; }
       #trendPanel { bottom: 96px; left: 8px; min-width: 200px; }
       #scenarioPanel { bottom: 8px; right: 8px; width: min(380px, calc(100% - 200px)); }
       #legend { bottom: 8px; left: 8px; font-size: 10px; }
