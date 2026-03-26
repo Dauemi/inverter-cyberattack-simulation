@@ -94,6 +94,42 @@
     body.presentation #legend {
       opacity: 0.35;
     }
+    #juryOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    #juryOverlay.visible { opacity: 1; }
+    .jury-overlay-inner {
+      text-align: center;
+      padding: 28px 48px;
+      background: rgba(8, 12, 32, 0.92);
+      border: 3px solid #ff3b3b;
+      border-radius: 16px;
+      box-shadow: 0 0 40px rgba(255, 50, 50, 0.45), inset 0 0 60px rgba(255, 80, 0, 0.08);
+      max-width: 92vw;
+    }
+    #juryScenarioLine {
+      font-size: clamp(28px, 6vw, 56px);
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: #ffdede;
+      text-shadow: 0 0 20px rgba(255, 60, 60, 0.8);
+    }
+    #jurySubLine {
+      margin-top: 14px;
+      font-size: clamp(14px, 2.4vw, 22px);
+      color: #ffb4a0;
+      font-weight: 600;
+    }
+    body.presentation #juryOverlay { opacity: inherit; }
+    body.presentation #juryOverlay.visible { opacity: 1; }
   </style>
 </head>
 <body>
@@ -129,8 +165,9 @@
     <canvas id="trendCanvas" width="280" height="60"></canvas>
   </div>
   <div id="riskPanel">
-    <div>Risk Level</div>
+    <div>Risk Level (live)</div>
     <span id="riskBadge">LOW</span>
+    <div id="matrixRiskLine" style="margin-top:6px;font-size:11px;color:#9fb0c2;">Risk matrix: Low</div>
   </div>
   <div id="scenarioPanel">
     <div class="scenario-card"><div class="scenario-label">Lost Power</div><div id="lostPowerValue" class="scenario-value">0.1 GW</div></div>
@@ -145,6 +182,13 @@
     <div style="margin-top:6px;"><span class="chip" style="background:#1e90ff;"></span>Line Load &lt; 80%</div>
     <div><span class="chip" style="background:#ffaa00;"></span>Line Load 80–100%</div>
     <div><span class="chip" style="background:#ff4444;"></span>Line Load &gt; 100%</div>
+  </div>
+
+  <div id="juryOverlay" hidden aria-live="polite">
+    <div class="jury-overlay-inner">
+      <div id="juryScenarioLine">SCENARIO</div>
+      <div id="jurySubLine"></div>
+    </div>
   </div>
 
   <script type="importmap">
@@ -164,6 +208,7 @@
     const peakValueEl = document.getElementById('peakValue');
     const statusValueEl = document.getElementById('statusValue');
     const riskBadgeEl = document.getElementById('riskBadge');
+    const matrixRiskLineEl = document.getElementById('matrixRiskLine');
     const trendCanvas = document.getElementById('trendCanvas');
     const trendCtx = trendCanvas.getContext('2d');
     const lostPowerValueEl = document.getElementById('lostPowerValue');
@@ -179,6 +224,8 @@
     let lastAlertMs = 0;
     let lastSignalKey = "";
     let presentationMode = false;
+    let juryOverlayTimer = null;
+    let sirenRecorded = null;
 
     const SCENARIO_PROFILES = {
       S1: { lostPowerGw: 0.1, compromisedPct: 0.1, durationMin: 5, deltaF: -0.000, level: 1 },
@@ -186,6 +233,17 @@
       S3: { lostPowerGw: 1.0, compromisedPct: 1.0, durationMin: 15, deltaF: -0.050, level: 3 },
       S4: { lostPowerGw: 2.0, compromisedPct: 2.0, durationMin: 20, deltaF: -0.100, level: 4 },
       S5: { lostPowerGw: 5.0, compromisedPct: 5.0, durationMin: 30, deltaF: -0.250, level: 5 }
+    };
+
+    /* Matches Risk Matrix table in main dashboard (Likelihood × Impact style labels). */
+    const DASHBOARD_RISK_LEVEL = { S1: "Low", S2: "Low", S3: "Low", S4: "Moderate", S5: "Moderate" };
+
+    const SCENARIO_DISPLAY_TITLES = {
+      S1: "Local (0.1 GW)",
+      S2: "Regional (0.4 GW)",
+      S3: "Multi-region (1 GW)",
+      S4: "National (2 GW)",
+      S5: "Interconnection (5 GW)"
     };
 
     function getWsFromQuery() {
@@ -276,6 +334,28 @@
       trendCtx.stroke();
     }
 
+    function showJuryOverlay(scenario, stats) {
+      const overlay = document.getElementById("juryOverlay");
+      const line1 = document.getElementById("juryScenarioLine");
+      const line2 = document.getElementById("jurySubLine");
+      const sc = scenario || "S1";
+      const prof = SCENARIO_PROFILES[sc] || SCENARIO_PROFILES.S1;
+      const dashLevel = DASHBOARD_RISK_LEVEL[sc] || "Low";
+      const title = SCENARIO_DISPLAY_TITLES[sc] || sc;
+      const st = stats || { max_line_loading: 0, min_vm: 1, max_vm: 1 };
+      const live = estimateRisk(st, sc);
+      line1.textContent = `${sc} — ${title}`;
+      line2.textContent =
+        `Risk matrix level: ${dashLevel} · Live assessment: ${live.label} · Lost ${prof.lostPowerGw} GW · Δf ${prof.deltaF.toFixed(3)} Hz`;
+      overlay.hidden = false;
+      overlay.classList.add("visible");
+      clearTimeout(juryOverlayTimer);
+      juryOverlayTimer = setTimeout(() => {
+        overlay.classList.remove("visible");
+        overlay.hidden = true;
+      }, 2600);
+    }
+
     function playScenarioAlert(scenario) {
       const now = Date.now();
       if (scenario === lastAlertScenario && (now - lastAlertMs) < 1600) return;
@@ -314,7 +394,7 @@
       setTimeout(() => audio.close().catch(() => {}), 1800);
     }
 
-    function playRealisticSiren(scenario) {
+    function playRealisticSirenSynth(scenario) {
       const level = (SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1).level;
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
@@ -345,6 +425,27 @@
       osc.stop(end);
       lfo.stop(end);
       setTimeout(() => audio.close().catch(() => {}), 3200);
+    }
+
+    /** Recorded siren loop (generated WAV in repo); falls back to synthesis if load/play fails. */
+    function playRealisticSiren(scenario) {
+      const level = (SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1).level;
+      try {
+        if (!sirenRecorded) {
+          sirenRecorded = new Audio(new URL("assets/siren.wav", window.location.href));
+          sirenRecorded.preload = "auto";
+        }
+        sirenRecorded.pause();
+        sirenRecorded.currentTime = 0;
+        sirenRecorded.playbackRate = 0.92 + level * 0.07;
+        sirenRecorded.volume = Math.min(1, 0.62 + level * 0.06);
+        const p = sirenRecorded.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => playRealisticSirenSynth(scenario));
+        }
+      } catch (_) {
+        playRealisticSirenSynth(scenario);
+      }
     }
 
     function spawnShockWave(severity) {
@@ -569,6 +670,7 @@
       riskBadgeEl.textContent = risk.label;
       riskBadgeEl.style.background = risk.bg;
       riskBadgeEl.style.color = risk.fg;
+      matrixRiskLineEl.textContent = `Risk matrix: ${DASHBOARD_RISK_LEVEL[scenario || "S1"] || "Low"}`;
       // Scenario visual intensity used in animation pulse.
       attackVisualIntensity = scenarioSeverity;
       if (payload.attack_applied && scenario) {
@@ -642,6 +744,7 @@
       if (!socket || socket.readyState !== 1) return;
       const sc = document.getElementById('scenario').value;
       socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
+      showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null);
       playRealisticSiren(sc);
     };
     document.getElementById('sirenBtn').onclick = () => {
