@@ -13,24 +13,24 @@
     .mini-btn { background: #1a66d6; color: #fff; border: 1px solid #4ea1ff; border-radius: 6px; padding: 3px 7px; font-size: 11px; cursor: pointer; }
     #kpiPanel {
       position: absolute;
-      top: 164px;
+      top: 162px;
       left: 10px;
       right: auto;
-      width: min(560px, calc(100% - 390px));
+      width: min(720px, calc(100% - 380px));
       z-index: 10;
       display: grid;
-      grid-template-columns: repeat(3, minmax(95px, 1fr));
-      gap: 5px;
+      grid-template-columns: repeat(5, minmax(92px, 1fr));
+      gap: 4px;
     }
     .kpi {
       background: rgba(17,24,51,0.76);
       border: 1px solid rgba(71, 166, 255, 0.35);
       border-radius: 8px;
-      padding: 5px 7px;
-      min-height: 38px;
+      padding: 4px 6px;
+      min-height: 30px;
     }
-    .kpi-label { font-size: 9px; color: #8fa6be; text-transform: uppercase; letter-spacing: 0.04em; }
-    .kpi-value { margin-top: 3px; font-size: 13px; font-weight: 700; color: #34d399; line-height: 1.1; }
+    .kpi-label { font-size: 8px; color: #8fa6be; text-transform: uppercase; letter-spacing: 0.03em; }
+    .kpi-value { margin-top: 2px; font-size: 11px; font-weight: 700; color: #34d399; line-height: 1.05; }
     #statusValue { color: #34d399; }
     #riskPanel {
       position: absolute;
@@ -132,7 +132,7 @@
     @media (max-width: 1280px), (max-height: 760px) {
       #ui { transform: scale(0.93); transform-origin: top left; }
       #aiPanel { transform: scale(0.93); transform-origin: top right; }
-      #kpiPanel { top: 152px; width: min(520px, calc(100% - 370px)); }
+      #kpiPanel { top: 150px; width: min(640px, calc(100% - 360px)); grid-template-columns: repeat(5, minmax(80px, 1fr)); }
       #riskPanel { top: 190px; }
       #trendPanel { bottom: 96px; }
       #scenarioPanel { width: min(420px, calc(100% - 220px)); }
@@ -142,7 +142,7 @@
     @media (max-width: 1080px), (max-height: 680px) {
       #ui { transform: scale(0.86); }
       #aiPanel { transform: scale(0.86); }
-      #kpiPanel { top: 142px; width: min(470px, calc(100% - 330px)); grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+      #kpiPanel { top: 142px; width: min(520px, calc(100% - 300px)); grid-template-columns: repeat(3, minmax(90px, 1fr)); }
       #riskPanel { top: 232px; right: 8px; }
       #trendPanel { bottom: 96px; left: 8px; min-width: 200px; }
       #scenarioPanel { bottom: 8px; right: 8px; width: min(380px, calc(100% - 200px)); }
