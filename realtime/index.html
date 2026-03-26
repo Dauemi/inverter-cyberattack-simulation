@@ -302,25 +302,34 @@
       }
     }
 
-    function setScenarioAndApply(sc, options = {}) {
-      const fromAssistant = !!options.fromAssistant;
-      document.getElementById('scenario').value = sc;
+    function sendScenarioToBackend(sc) {
       if (socket && socket.readyState === 1) {
         socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
       }
+    }
+
+    function setScenarioAndApply(sc, options = {}) {
+      const fromAssistant = !!options.fromAssistant;
+      document.getElementById('scenario').value = sc;
       const p = SCENARIO_PROFILES[sc] || SCENARIO_PROFILES.S1;
       if (fromAssistant) {
         const spoken = `Executing ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
         aiLog(spoken);
-        // Coordinate voice first, then show scenario card for 30 seconds and trigger siren.
+        // Coordinate voice -> visual announcement -> attack activation.
         aiSpeak(spoken, () => {
           showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 10000);
-          playRealisticSiren(sc);
-          aiLog(`Scenario ${sc} visual card active for 30 seconds.`);
+          setTimeout(() => {
+            sendScenarioToBackend(sc);
+            playRealisticSiren(sc);
+          }, 700);
+          aiLog(`Scenario ${sc} announced, then activated.`);
         });
       } else {
         showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 2600);
-        playRealisticSiren(sc);
+        setTimeout(() => {
+          sendScenarioToBackend(sc);
+          playRealisticSiren(sc);
+        }, 700);
         const reply = `Applied ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
         aiLog(reply);
         aiSpeak(reply);
@@ -915,11 +924,8 @@
 
     document.getElementById('connectBtn').onclick = connect;
     document.getElementById('setScenario').onclick = () => {
-      if (!socket || socket.readyState !== 1) return;
       const sc = document.getElementById('scenario').value;
-      socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
-      showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null);
-      playRealisticSiren(sc);
+      setScenarioAndApply(sc, { fromAssistant: false });
     };
     document.getElementById('sirenBtn').onclick = () => {
       const sc = document.getElementById('scenario').value;
