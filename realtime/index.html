@@ -149,6 +149,7 @@
       <button id="presentationBtn" class="mini-btn">Presentation Mode</button>
       <button id="sirenBtn" class="mini-btn">Test Siren</button>
       <button id="voiceBtn" class="mini-btn">Voice AI</button>
+      <button id="demoBtn" class="mini-btn">Demo Locked: OFF</button>
     </div>
     <div id="stats">Disconnected</div>
   </div>
@@ -227,6 +228,7 @@
     const aiInputEl = document.getElementById('aiInput');
     const aiLogEl = document.getElementById('aiLog');
     const aiTalkBtnEl = document.getElementById('aiTalkBtn');
+    const demoBtnEl = document.getElementById('demoBtn');
     let socket;
     let reconnectAttempts = 0;
     let reconnectTimer = null;
@@ -240,6 +242,11 @@
     let sirenRecorded = null;
     let speechRec = null;
     let speechListening = false;
+    let demoLocked = false;
+    let demoTimer = null;
+    let demoIndex = 0;
+    const demoScenarios = ["S1", "S2", "S3", "S4", "S5"];
+    const demoStepMs = 40000;
 
     const SCENARIO_PROFILES = {
       S1: { lostPowerGw: 0.1, compromisedPct: 0.1, durationMin: 5, deltaF: -0.000, level: 1 },
@@ -324,6 +331,7 @@
       const cmd = (rawCommand || "").trim().toLowerCase();
       if (!cmd) return;
       if (/\bdisconnect\b/.test(cmd)) {
+        if (demoLocked) stopDemoLocked("Demo locked stopped before disconnect.");
         if (socket) {
           manualDisconnect = true;
           socket.close();
@@ -371,9 +379,51 @@
         aiSpeak(reply);
         return;
       }
+      if (cmd.includes("demo")) {
+        if (demoLocked) {
+          stopDemoLocked("Demo locked mode stopped.");
+        } else {
+          startDemoLocked();
+        }
+        return;
+      }
       const fallback = "I did not understand. Try: connect, scenario S4, status, siren test, or presentation mode.";
       aiLog(fallback);
       aiSpeak(fallback);
+    }
+
+    function runDemoStep() {
+      if (!demoLocked) return;
+      const sc = demoScenarios[demoIndex % demoScenarios.length];
+      demoIndex += 1;
+      setScenarioAndApply(sc, { fromAssistant: true });
+      aiLog(`Demo locked running: ${sc} (step ${demoIndex}/${demoScenarios.length} in cycle).`);
+      demoTimer = setTimeout(runDemoStep, demoStepMs);
+    }
+
+    function startDemoLocked() {
+      demoLocked = true;
+      demoIndex = 0;
+      demoBtnEl.textContent = "Demo Locked: ON";
+      aiSpeak("Demo locked mode started. I will auto-run scenarios S1 to S5 every 40 seconds.");
+      aiLog("Demo locked started. Auto sequence S1 to S5 every 40s.");
+      if (!socket || socket.readyState !== 1) {
+        connect();
+      }
+      if (demoTimer) clearTimeout(demoTimer);
+      runDemoStep();
+    }
+
+    function stopDemoLocked(message) {
+      demoLocked = false;
+      if (demoTimer) {
+        clearTimeout(demoTimer);
+        demoTimer = null;
+      }
+      demoBtnEl.textContent = "Demo Locked: OFF";
+      const msg = message || "Demo locked mode stopped.";
+      aiLog(msg);
+      aiSpeak(msg);
     }
 
     const scene = new THREE.Scene();
@@ -874,6 +924,10 @@
     document.getElementById('sirenBtn').onclick = () => {
       const sc = document.getElementById('scenario').value;
       playRealisticSiren(sc);
+    };
+    demoBtnEl.onclick = () => {
+      if (demoLocked) stopDemoLocked("Demo locked mode stopped by user.");
+      else startDemoLocked();
     };
     document.getElementById('aiSendBtn').onclick = () => {
       runAICommand(aiInputEl.value);
