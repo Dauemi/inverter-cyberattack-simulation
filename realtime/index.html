@@ -302,6 +302,16 @@
       }
     }
 
+    function stopAllAudio() {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      try {
+        if (sirenRecorded) {
+          sirenRecorded.pause();
+          sirenRecorded.currentTime = 0;
+        }
+      } catch (_) {}
+    }
+
     function sendScenarioToBackend(sc) {
       if (socket && socket.readyState === 1) {
         socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
@@ -343,6 +353,7 @@
         if (demoLocked) stopDemoLocked("Demo locked stopped before disconnect.");
         if (socket) {
           manualDisconnect = true;
+          stopAllAudio();
           socket.close();
           const reply = "Disconnected from realtime simulation.";
           aiLog(reply);
@@ -856,8 +867,7 @@
       matrixRiskLineEl.textContent = `Risk matrix: ${DASHBOARD_RISK_LEVEL[scenario || "S1"] || "Low"}`;
       // Scenario visual intensity used in animation pulse.
       attackVisualIntensity = scenarioSeverity;
-      if (payload.attack_applied && scenario) {
-        playScenarioAlert(scenario);
+      if (payload.attack_applied) {
         spawnShockWave(scenarioSeverity);
       }
       updateTrend(stats.max_line_loading);
@@ -899,6 +909,7 @@
       socket.onclose = (event) => {
         const reason = event && event.reason ? `: ${event.reason}` : "";
         statsEl.textContent = `Disconnected (code ${event.code}${reason})`;
+        stopAllAudio();
 
         if (!manualDisconnect) {
           reconnectAttempts += 1;
