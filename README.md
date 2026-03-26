@@ -1,3 +1,9 @@
+# 2ASICYA — Solar Inverter Cyber Attack Simulation
+
+This repository contains the full MSc project implementation for cyber-physical attack simulation on distributed PV inverters, including:
+- offline simulation and risk analysis,
+- an interactive analytics dashboard,
+- and a real-time 3D digital-twin style cyberattack viewer.
 
 ---
 
@@ -234,8 +240,8 @@ python scripts/smoke_scenarios.py
 
 # 📥 Kaggle Datasets (Dashboard)
 
-- Solar Power Generation Data: https://www.kaggle.com/datasets/anikannal/solar-power-generation-data
-- Smart Grid Intrusion Detection: https://www.kaggle.com/datasets/hussainsheikh03/smart-grid-intrusion-detection-dataset
+- [Solar Power Generation Data](https://www.kaggle.com/datasets/anikannal/solar-power-generation-data)
+- [Smart Grid Intrusion Detection Dataset](https://www.kaggle.com/datasets/hussainsheikh03/smart-grid-intrusion-detection-dataset)
 
 ---
 
@@ -298,10 +304,10 @@ Examples:
 - Automatically runs S1 -> S5 (40 seconds each) in a loop.
 - Coordinates voice prompt, scenario overlay, and attack launch timing.
 
-## Local Run (Recommended for rehearsal)
-From the project parent directory (one level above `repo/`):
+## Local Run (Recommended for Rehearsal)
+From the project parent directory (one level above `repo/`), run:
 
-```bash
+```powershell
 python -m venv .venv
 .venv\Scripts\activate
 python -m pip install -r repo/requirements.txt
@@ -313,6 +319,15 @@ python -m uvicorn backend.app:app --app-dir repo --host 0.0.0.0 --port 8000
 Then open:
 - Dashboard: `repo/2ASICYA_Dashboard.html`
 - Realtime 3D: `repo/realtime/index.html?ws=ws://localhost:8000/ws`
+
+---
+
+## Presentation Quick Start (60 seconds)
+1. Start backend (local or Render).
+2. Open dashboard and click **LIVE 3D**.
+3. Click **Connect** in the 3D page.
+4. Use **AI Cyber Assistant (EN)** or **Demo Locked** to run S1 -> S5.
+5. Enable **Presentation Mode** for projector-friendly display.
 
 ---
 
