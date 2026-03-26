@@ -270,6 +270,21 @@
       aiLogEl.textContent = msg;
     }
 
+    function aiSpeak(text) {
+      if (!("speechSynthesis" in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "en-US";
+        u.rate = 1.0;
+        u.pitch = 1.0;
+        const voices = window.speechSynthesis.getVoices() || [];
+        const enVoice = voices.find(v => (v.lang || "").toLowerCase().startsWith("en"));
+        if (enVoice) u.voice = enVoice;
+        window.speechSynthesis.speak(u);
+      } catch (_) {}
+    }
+
     function setScenarioAndApply(sc) {
       document.getElementById('scenario').value = sc;
       if (socket && socket.readyState === 1) {
@@ -277,7 +292,10 @@
       }
       showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null);
       playRealisticSiren(sc);
-      aiLog(`Applied ${sc}.`);
+      const p = SCENARIO_PROFILES[sc] || SCENARIO_PROFILES.S1;
+      const reply = `Applied ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
+      aiLog(reply);
+      aiSpeak(reply);
     }
 
     function runAICommand(rawCommand) {
@@ -285,15 +303,29 @@
       if (!cmd) return;
       if (cmd.includes("connect")) {
         connect();
-        aiLog("Connecting to realtime WebSocket.");
+        const reply = "Connecting to the realtime WebSocket now.";
+        aiLog(reply);
+        aiSpeak(reply);
         return;
       }
       if (cmd.includes("disconnect")) {
         if (socket) {
           manualDisconnect = true;
           socket.close();
-          aiLog("Disconnected.");
+          const reply = "Disconnected from realtime simulation.";
+          aiLog(reply);
+          aiSpeak(reply);
         }
+        return;
+      }
+      if (cmd.includes("status") || cmd.includes("what is happening") || cmd.includes("summary")) {
+        const sc = document.getElementById('scenario').value || "S1";
+        const p = SCENARIO_PROFILES[sc] || SCENARIO_PROFILES.S1;
+        const risk = riskBadgeEl.textContent || "LOW";
+        const load = peakValueEl.textContent || "0%";
+        const reply = `Current scenario is ${sc}. Risk is ${risk}. Peak loading is ${load}. Lost power target is ${p.lostPowerGw} gigawatts.`;
+        aiLog(reply);
+        aiSpeak(reply);
         return;
       }
       const scenarioMatch = cmd.match(/\bs([1-5])\b/);
@@ -304,15 +336,22 @@
       }
       if (cmd.includes("siren")) {
         playRealisticSiren(document.getElementById('scenario').value);
-        aiLog("Siren played.");
+        const reply = "Siren test played.";
+        aiLog(reply);
+        aiSpeak(reply);
         return;
       }
       if (cmd.includes("presentation")) {
         document.getElementById('presentationBtn').click();
-        aiLog("Toggled presentation mode.");
+        const isOn = document.body.classList.contains('presentation');
+        const reply = isOn ? "Presentation mode enabled." : "Presentation mode disabled.";
+        aiLog(reply);
+        aiSpeak(reply);
         return;
       }
-      aiLog("Unknown command. Try: connect, scenario S4, apply scenario S5, siren test.");
+      const fallback = "I did not understand. Try: connect, scenario S4, status, siren test, or presentation mode.";
+      aiLog(fallback);
+      aiSpeak(fallback);
     }
 
     const scene = new THREE.Scene();
