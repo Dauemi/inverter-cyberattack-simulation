@@ -53,7 +53,7 @@
     }
     #trendPanel {
       position: absolute;
-      top: 206px;
+      bottom: 130px;
       left: 12px;
       z-index: 10;
       background: rgba(17,24,51,0.9);
@@ -66,13 +66,13 @@
     #trendCanvas { display: block; width: 280px; height: 60px; border-radius: 4px; background: rgba(255,255,255,0.03); }
     #scenarioPanel {
       position: absolute;
-      top: 206px;
-      left: 310px;
+      bottom: 12px;
+      right: 12px;
       z-index: 10;
       display: grid;
-      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
       gap: 8px;
-      max-width: 760px;
+      width: min(520px, calc(100% - 280px));
     }
     .scenario-card {
       background: rgba(17,24,51,0.9);
@@ -82,7 +82,7 @@
       min-height: 54px;
     }
     .scenario-label { font-size: 10px; color: #9fb0c2; text-transform: uppercase; }
-    .scenario-value { margin-top: 4px; font-size: 30px; font-weight: 800; color: #ff5555; line-height: 1; }
+    .scenario-value { margin-top: 4px; font-size: 36px; font-weight: 800; color: #ff5555; line-height: 1; }
     #legend { position: absolute; bottom: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; font-size: 12px; }
     .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
     canvas { display: block; }
@@ -165,6 +165,7 @@
     const maxLoadingHistory = [];
     let lastAlertScenario = "";
     let lastAlertMs = 0;
+    let lastSignalKey = "";
 
     const SCENARIO_PROFILES = {
       S1: { lostPowerGw: 0.1, compromisedPct: 0.1, durationMin: 5, deltaF: -0.000, level: 1 },
@@ -217,6 +218,7 @@
 
     const nodes = new Map();
     const lines = [];
+    const attackSignals = [];
     let tick = 0;
     let lastPayload = null;
     const heatPoints = [];
@@ -227,14 +229,20 @@
       return map[scenario] || 0.10;
     }
 
-    function estimateRisk(stats) {
+    function estimateRisk(stats, scenario) {
+      const scenarioLevel = (SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1).level;
       const maxLoading = stats.max_line_loading || 0;
       const minV = stats.min_vm || 1.0;
       const maxV = stats.max_vm || 1.0;
       const vSpread = Math.abs(maxV - minV);
-      if (maxLoading > 100 || minV < 0.94 || vSpread > 0.08) return { label: "CRITICAL", bg: "#ef4444", fg: "#210707" };
-      if (maxLoading > 80 || minV < 0.97 || vSpread > 0.05) return { label: "HIGH", bg: "#f59e0b", fg: "#201304" };
-      if (maxLoading > 60 || minV < 0.985 || vSpread > 0.03) return { label: "MEDIUM", bg: "#22c55e", fg: "#06210e" };
+      let statsLevel = 1;
+      if (maxLoading > 100 || minV < 0.94 || vSpread > 0.08) statsLevel = 5;
+      else if (maxLoading > 80 || minV < 0.97 || vSpread > 0.05) statsLevel = 4;
+      else if (maxLoading > 60 || minV < 0.985 || vSpread > 0.03) statsLevel = 3;
+      const finalLevel = Math.max(scenarioLevel, statsLevel);
+      if (finalLevel >= 5) return { label: "CRITICAL", bg: "#ef4444", fg: "#210707" };
+      if (finalLevel >= 4) return { label: "HIGH", bg: "#f59e0b", fg: "#201304" };
+      if (finalLevel >= 3) return { label: "MEDIUM", bg: "#22c55e", fg: "#06210e" };
       return { label: "LOW", bg: "#38bdf8", fg: "#041a25" };
     }
 
@@ -256,33 +264,72 @@
 
     function playScenarioAlert(scenario) {
       const now = Date.now();
-      if (scenario === lastAlertScenario && (now - lastAlertMs) < 3000) return;
+      if (scenario === lastAlertScenario && (now - lastAlertMs) < 1600) return;
       lastAlertScenario = scenario;
       lastAlertMs = now;
       const level = (SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1).level;
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       const audio = new Ctx();
-      const gain = audio.createGain();
-      gain.connect(audio.destination);
-      gain.gain.value = 0.0001;
-      const osc = audio.createOscillator();
-      osc.type = level >= 4 ? "sawtooth" : "square";
-      osc.connect(gain);
+      const master = audio.createGain();
+      master.connect(audio.destination);
+      master.gain.value = 0.24;
+      const patterns = {
+        1: [520],
+        2: [520, 520],
+        3: [620, 520, 620],
+        4: [760, 560, 760, 560],
+        5: [920, 520, 920, 520, 920]
+      };
+      const freqs = patterns[level] || patterns[1];
       const t0 = audio.currentTime;
-      const baseHz = 360 + level * 110;
-      osc.frequency.setValueAtTime(baseHz, t0);
-      osc.frequency.linearRampToValueAtTime(baseHz + 120, t0 + 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.14, t0 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
-      if (level >= 3) {
-        osc.frequency.setValueAtTime(baseHz + 200, t0 + 0.20);
-        gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.22);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.36);
+      freqs.forEach((freq, idx) => {
+        const osc = audio.createOscillator();
+        const env = audio.createGain();
+        osc.type = level >= 4 ? "sawtooth" : "square";
+        osc.frequency.value = freq;
+        osc.connect(env);
+        env.connect(master);
+        const start = t0 + idx * 0.16;
+        env.gain.setValueAtTime(0.0001, start);
+        env.gain.exponentialRampToValueAtTime(0.9, start + 0.015);
+        env.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
+        osc.start(start);
+        osc.stop(start + 0.13);
+      });
+      setTimeout(() => audio.close().catch(() => {}), 1800);
+    }
+
+    function clearAttackSignals() {
+      attackSignals.forEach(s => scene.remove(s.mesh));
+      attackSignals.length = 0;
+      lastSignalKey = "";
+    }
+
+    function ensureAttackSignals(scenario, affectedLineCount, severity) {
+      const signalCountByScenario = { S1: 2, S2: 4, S3: 7, S4: 11, S5: 16 };
+      const targetCount = Math.min(affectedLineCount, signalCountByScenario[scenario] || 3);
+      const key = `${scenario}:${targetCount}:${lines.length}`;
+      if (key === lastSignalKey) return;
+      clearAttackSignals();
+      for (let i = 0; i < targetCount; i++) {
+        const lineIdx = i % Math.max(1, affectedLineCount);
+        const geo = new THREE.SphereGeometry(0.14 + severity * 0.1, 10, 10);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0xff3b3b,
+          emissive: 0xff1100,
+          emissiveIntensity: 1.2 + severity * 1.4
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+        attackSignals.push({
+          mesh,
+          lineIdx,
+          phase: Math.random(),
+          speed: 0.6 + severity * 1.0 + Math.random() * 0.4
+        });
       }
-      osc.start(t0);
-      osc.stop(t0 + 0.40);
-      setTimeout(() => audio.close().catch(() => {}), 800);
+      lastSignalKey = key;
     }
 
     function makeTextSprite(text) {
@@ -308,6 +355,7 @@
       nodes.forEach(n => scene.remove(n));
       lines.forEach(l => { scene.remove(l.line); scene.remove(l.marker); });
       heatPoints.forEach(h => scene.remove(h.mesh));
+      clearAttackSignals();
       nodes.clear();
       lines.length = 0;
       heatPoints.length = 0;
@@ -415,6 +463,7 @@
       });
 
       const affectedLineCount = Math.max(1, Math.floor(lineData.length * scenarioSeverity));
+      ensureAttackSignals(scenario || "S1", affectedLineCount, scenarioSeverity);
       lineData.forEach((l, i) => {
         if (!lines[i]) return;
         const fromPos = nodes.get(l.from_bus)?.mesh.position;
@@ -453,7 +502,7 @@
       const isNormal = stats.max_line_loading < 80 && stats.min_vm >= 0.97 && stats.max_vm <= 1.05;
       statusValueEl.textContent = isNormal ? "NORMAL" : "ALERT";
       statusValueEl.style.color = isNormal ? "#34d399" : "#f97316";
-      const risk = estimateRisk(stats);
+      const risk = estimateRisk(stats, scenario || "S1");
       riskBadgeEl.textContent = risk.label;
       riskBadgeEl.style.background = risk.bg;
       riskBadgeEl.style.color = risk.fg;
@@ -562,6 +611,20 @@
         const z = l.a.z + (l.b.z - l.a.z) * t;
         l.marker.position.set(x, 0.05, z);
       });
+      if (lastPayload && lastPayload.attack_applied) {
+        attackSignals.forEach((sig, idx) => {
+          const ln = lines[sig.lineIdx];
+          if (!ln) return;
+          const t = (tick * sig.speed + sig.phase + idx * 0.07) % 1;
+          const x = ln.a.x + (ln.b.x - ln.a.x) * t;
+          const z = ln.a.z + (ln.b.z - ln.a.z) * t;
+          const y = 0.25 + Math.sin((tick + idx) * 8) * 0.12;
+          sig.mesh.position.set(x, y, z);
+          sig.mesh.scale.setScalar(1.0 + Math.sin((tick + idx) * 12) * 0.22);
+        });
+      } else {
+        attackSignals.forEach(sig => sig.mesh.position.set(9999, 9999, 9999));
+      }
       controls.update();
       renderer.render(scene, camera);
     }
