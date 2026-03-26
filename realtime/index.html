@@ -314,7 +314,7 @@
         aiLog(spoken);
         // Coordinate voice first, then show scenario card for 30 seconds and trigger siren.
         aiSpeak(spoken, () => {
-          showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 30000);
+          showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 10000);
           playRealisticSiren(sc);
           aiLog(`Scenario ${sc} visual card active for 30 seconds.`);
         });
