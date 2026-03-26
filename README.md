@@ -25,7 +25,8 @@ Model, simulate, and evaluate the impact of coordinated cyberattacks on distribu
    - Line loadings  
    - System frequency  
 5. Quantifying cyber-physical risk (impact × likelihood)  
-6. Designing a 3-layer IDS architecture for detecting coordinated PV manipulation attacks  
+6. Designing a 3-layer IDS architecture for detecting coordinated PV manipulation attacks
+7. Project aims to fill the gap between renewable deployment and cybersecurity maturity  
 
 ---
 
