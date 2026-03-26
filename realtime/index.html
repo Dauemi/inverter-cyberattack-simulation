@@ -9,6 +9,8 @@
     #ui { position: absolute; top: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; }
     #ui input { width: 360px; }
     #stats { margin-top: 6px; font-size: 12px; color: #9fb0c2; }
+    #topActions { margin-top: 6px; display: flex; gap: 6px; }
+    .mini-btn { background: #1a66d6; color: #fff; border: 1px solid #4ea1ff; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
     #kpiPanel {
       position: absolute;
       top: 132px;
@@ -86,6 +88,12 @@
     #legend { position: absolute; bottom: 12px; left: 12px; z-index: 10; background: rgba(17,24,51,0.9); padding: 10px 12px; border-radius: 8px; font-size: 12px; }
     .chip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
     canvas { display: block; }
+    body.presentation #kpiPanel,
+    body.presentation #scenarioPanel,
+    body.presentation #trendPanel,
+    body.presentation #legend {
+      opacity: 0.35;
+    }
   </style>
 </head>
 <body>
@@ -102,6 +110,10 @@
         <option>S1</option><option>S2</option><option>S3</option><option>S4</option><option>S5</option>
       </select>
       <button id="setScenario">Apply</button>
+    </div>
+    <div id="topActions">
+      <button id="presentationBtn" class="mini-btn">Presentation Mode</button>
+      <button id="sirenBtn" class="mini-btn">Test Siren</button>
     </div>
     <div id="stats">Disconnected</div>
   </div>
@@ -166,6 +178,7 @@
     let lastAlertScenario = "";
     let lastAlertMs = 0;
     let lastSignalKey = "";
+    let presentationMode = false;
 
     const SCENARIO_PROFILES = {
       S1: { lostPowerGw: 0.1, compromisedPct: 0.1, durationMin: 5, deltaF: -0.000, level: 1 },
@@ -223,6 +236,7 @@
     let lastPayload = null;
     const heatPoints = [];
     let attackVisualIntensity = 0;
+    const shockWaves = [];
 
     function getScenarioSeverity(scenario) {
       const map = { S1: 0.12, S2: 0.25, S3: 0.40, S4: 0.60, S5: 0.85 };
@@ -298,6 +312,55 @@
         osc.stop(start + 0.13);
       });
       setTimeout(() => audio.close().catch(() => {}), 1800);
+    }
+
+    function playRealisticSiren(scenario) {
+      const level = (SCENARIO_PROFILES[scenario] || SCENARIO_PROFILES.S1).level;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const audio = new Ctx();
+      const master = audio.createGain();
+      master.connect(audio.destination);
+      master.gain.value = 0.30;
+      const osc = audio.createOscillator();
+      const lfo = audio.createOscillator();
+      const lfoGain = audio.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.value = 420 + level * 60;
+      lfo.type = "sine";
+      lfo.frequency.value = 1.2 + level * 0.25;
+      lfoGain.gain.value = 140 + level * 30;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      const env = audio.createGain();
+      osc.connect(env);
+      env.connect(master);
+      const t0 = audio.currentTime;
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.exponentialRampToValueAtTime(0.85, t0 + 0.05);
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + (1.8 + level * 0.25));
+      osc.start(t0);
+      lfo.start(t0);
+      const end = t0 + (1.9 + level * 0.25);
+      osc.stop(end);
+      lfo.stop(end);
+      setTimeout(() => audio.close().catch(() => {}), 3200);
+    }
+
+    function spawnShockWave(severity) {
+      const geo = new THREE.RingGeometry(0.6, 0.95, 32);
+      const mat = new THREE.MeshBasicMaterial({
+        color: severity >= 0.6 ? 0xff3333 : 0xff9f1a,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide
+      });
+      const ring = new THREE.Mesh(geo, mat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(0, 0.05, 0);
+      ring.scale.set(1, 1, 1);
+      scene.add(ring);
+      shockWaves.push({ mesh: ring, age: 0, speed: 0.04 + severity * 0.05, max: 1.6 + severity * 2.4 });
     }
 
     function clearAttackSignals() {
@@ -508,7 +571,10 @@
       riskBadgeEl.style.color = risk.fg;
       // Scenario visual intensity used in animation pulse.
       attackVisualIntensity = scenarioSeverity;
-      if (payload.attack_applied && scenario) playScenarioAlert(scenario);
+      if (payload.attack_applied && scenario) {
+        playScenarioAlert(scenario);
+        spawnShockWave(scenarioSeverity);
+      }
       updateTrend(stats.max_line_loading);
       lastPayload = payload;
     }
@@ -576,6 +642,20 @@
       if (!socket || socket.readyState !== 1) return;
       const sc = document.getElementById('scenario').value;
       socket.send(JSON.stringify({ type: "set_scenario", scenario: sc }));
+      playRealisticSiren(sc);
+    };
+    document.getElementById('sirenBtn').onclick = () => {
+      const sc = document.getElementById('scenario').value;
+      playRealisticSiren(sc);
+    };
+    document.getElementById('presentationBtn').onclick = async () => {
+      presentationMode = !presentationMode;
+      document.body.classList.toggle('presentation', presentationMode);
+      if (presentationMode && document.documentElement.requestFullscreen) {
+        try { await document.documentElement.requestFullscreen(); } catch (_) {}
+      } else if (!presentationMode && document.fullscreenElement && document.exitFullscreen) {
+        try { await document.exitFullscreen(); } catch (_) {}
+      }
     };
 
     window.addEventListener('resize', () => {
@@ -624,6 +704,18 @@
         });
       } else {
         attackSignals.forEach(sig => sig.mesh.position.set(9999, 9999, 9999));
+      }
+      // radial attack shockwaves from substation
+      for (let i = shockWaves.length - 1; i >= 0; i--) {
+        const w = shockWaves[i];
+        w.age += 0.02;
+        const s = 1 + w.age * (14 * w.speed);
+        w.mesh.scale.set(s, s, s);
+        w.mesh.material.opacity = Math.max(0, 0.9 - w.age * 1.35);
+        if (s > w.max || w.mesh.material.opacity <= 0.02) {
+          scene.remove(w.mesh);
+          shockWaves.splice(i, 1);
+        }
       }
       controls.update();
       renderer.render(scene, camera);
