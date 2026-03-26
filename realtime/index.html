@@ -317,19 +317,19 @@
         aiLog(spoken);
         // Coordinate voice -> visual announcement -> attack activation.
         aiSpeak(spoken, () => {
-          showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 10000);
+          showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 5000);
           setTimeout(() => {
             sendScenarioToBackend(sc);
             playRealisticSiren(sc);
-          }, 700);
+          }, 5000);
           aiLog(`Scenario ${sc} announced, then activated.`);
         });
       } else {
-        showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 2600);
+        showJuryOverlay(sc, lastPayload && lastPayload.stats ? lastPayload.stats : null, 5000);
         setTimeout(() => {
           sendScenarioToBackend(sc);
           playRealisticSiren(sc);
-        }, 700);
+        }, 5000);
         const reply = `Applied ${sc}. Lost power ${p.lostPowerGw} gigawatts, compromised inverters ${p.compromisedPct} percent, duration ${p.durationMin} minutes.`;
         aiLog(reply);
         aiSpeak(reply);
