@@ -175,7 +175,7 @@ python scripts/smoke_scenarios.py
 
 # 🛠️ How to Run the Simulation
 
-Install dependencies:
+From the repository root (`repo/`), install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -253,13 +253,66 @@ python scripts/smoke_scenarios.py
 
 ## Backend (Render)
 1) Deploy using `render.yaml` (FastAPI + WebSocket).
-2) After deployment, copy the WebSocket URL:
-   `wss://YOUR-RENDER-APP.onrender.com/ws`
+2) Ensure `data/france_sprint3/*.csv` is present in the deployed repo.
+3) Verify:
+   - `/health` returns `{"status":"ok"}`
+   - `/routes` includes websocket route `"/ws"`
 
 ## Frontend (Vercel)
 1) Open `realtime/index.html`.
-2) Paste the WebSocket URL into the input.
-3) Click **Connect** and choose scenario.
+2) The WebSocket input is prefilled by default with:
+   `wss://inverter-cyberattack-simulation-1.onrender.com/ws`
+3) Click **Connect**, choose scenario (S1–S5), then **Apply**.
+
+## New Real-Time 3D Features
+- Scenario visual severity mode (S1 -> S5) with stronger colors, thicker affected lines, and dynamic attack zones.
+- Animated attack packets and radial shockwave effects from the substation.
+- Risk panel with:
+  - Live risk assessment
+  - Risk matrix reference level (aligned with dashboard table)
+- Audio alerts:
+  - Distinct per scenario
+  - Recorded siren (`realtime/assets/siren.wav`) with fallback synthesis.
+- Presentation mode:
+  - Fullscreen + reduced HUD opacity for projector visibility.
+- Jury overlay:
+  - Scenario title/details shown first, then attack starts after the configured delay.
+
+## AI Cyber Assistant (English)
+The 3D view includes a built-in AI assistant with:
+- Text commands
+- Voice commands (SpeechRecognition)
+- Spoken replies (SpeechSynthesis)
+
+Examples:
+- `connect`
+- `disconnect`
+- `scenario S4`
+- `status`
+- `siren test`
+- `presentation mode`
+- `demo` (toggle demo locked mode)
+
+## Demo Locked Mode
+- One-click auto-demo for oral presentation.
+- Automatically runs S1 -> S5 (40 seconds each) in a loop.
+- Coordinates voice prompt, scenario overlay, and attack launch timing.
+
+## Local Run (Recommended for rehearsal)
+From the project parent directory (one level above `repo/`):
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r repo/requirements.txt
+python -m pip install -r repo/backend/requirements.txt
+set PYTHONPATH=repo
+python -m uvicorn backend.app:app --app-dir repo --host 0.0.0.0 --port 8000
+```
+
+Then open:
+- Dashboard: `repo/2ASICYA_Dashboard.html`
+- Realtime 3D: `repo/realtime/index.html?ws=ws://localhost:8000/ws`
 
 ---
 
